@@ -16,6 +16,7 @@ struct ContentView: View {
     @State private var selectedTask: TaskNode?
     @State private var streakDays: Int = 3
     @State private var showDailySpin = false
+    @State private var bonusDestination: BonusDestination?
 
     private let mapSpring = Animation.spring(response: 0.4, dampingFraction: 0.7)
 
@@ -53,6 +54,8 @@ struct ContentView: View {
 
                         pathIntro(narrow: isNarrow)
 
+                        bonusActions(narrow: isNarrow)
+
                         AdventureMapView(
                             chapters: progress.chapters,
                             progress: progress,
@@ -77,6 +80,23 @@ struct ContentView: View {
                             progress.markCompleted(id: task.id)
                         }
                         bumpStreakIfNeeded()
+                    }
+                }
+                .navigationDestination(item: $bonusDestination) { destination in
+                    switch destination {
+                    case .petShop:
+                        PetShopView(profile: profile)
+                    case .bubblePop:
+                        BubblePopView(
+                            onRoundFinished: { coins in
+                                withAnimation(LearningTheme.successBump) {
+                                    profile.totalCoins = min(profile.totalCoins + max(0, coins), 9_999)
+                                }
+                            },
+                            onReturnToMap: {
+                                bonusDestination = nil
+                            }
+                        )
                     }
                 }
             }
@@ -156,6 +176,70 @@ struct ContentView: View {
         .animation(mapSpring, value: completedCount)
     }
 
+    // MARK: - Bonus actions
+
+    private func bonusActions(narrow: Bool) -> some View {
+        HStack(spacing: narrow ? 10 : 14) {
+            bonusButton(
+                title: "Pet Shop",
+                symbol: "tshirt.fill",
+                tint: LearningTheme.coral
+            ) {
+                bonusDestination = .petShop
+            }
+
+            bonusButton(
+                title: "Bubble Pop",
+                symbol: "bubbles.and.sparkles.fill",
+                tint: LearningTheme.accent
+            ) {
+                bonusDestination = .bubblePop
+            }
+        }
+    }
+
+    private func bonusButton(
+        title: String,
+        symbol: String,
+        tint: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: symbol)
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(tint)
+                    .frame(width: 40, height: 40)
+                    .background {
+                        Circle()
+                            .fill(tint.opacity(0.16))
+                    }
+
+                Text(title)
+                    .font(.system(.headline, design: .rounded).weight(.heavy))
+                    .foregroundStyle(LearningTheme.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 14)
+            .frame(maxWidth: .infinity)
+            .frame(height: LearningTheme.minTouchTarget)
+            .background {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(LearningTheme.surface.opacity(0.92))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .strokeBorder(tint.opacity(0.35), lineWidth: 2)
+                    }
+                    .shadow(color: tint.opacity(0.12), radius: 8, y: 4)
+            }
+        }
+        .buttonStyle(KidBounceButtonStyle())
+        .accessibilityLabel(title)
+    }
+
     private var pathSubtitle: String {
         if let today = progress.todaysChapter, !today.isCompleted {
             return "Day \(today.dayNumber) is unlocked — tap the glowing island!"
@@ -190,6 +274,15 @@ struct ContentView: View {
         UserDefaults.standard.set(today, forKey: dayKey)
         UserDefaults.standard.set(streakDays, forKey: streakStorageKey)
     }
+}
+
+// MARK: - Bonus destinations
+
+private enum BonusDestination: String, Identifiable, Hashable {
+    case petShop
+    case bubblePop
+
+    var id: String { rawValue }
 }
 
 #Preview {
