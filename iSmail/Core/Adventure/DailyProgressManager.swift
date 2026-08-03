@@ -57,17 +57,34 @@ final class DailyProgressManager {
 
     // MARK: - Status
 
-    /// Applies the daily unlock rules against `Calendar.current`.
+    /// Unlocked by calendar day **or** by finishing the previous chapter early.
+    func isUnlocked(_ node: ChapterNode, now: Date = .now) -> Bool {
+        isCalendarUnlocked(node, now: now) || isEarlyUnlocked(node)
+    }
+
+    /// True when this chapter's unlock date is today or earlier.
+    func isCalendarUnlocked(_ node: ChapterNode, now: Date = .now) -> Bool {
+        calendar.startOfDay(for: node.unlockDate) <= calendar.startOfDay(for: now)
+    }
+
+    /// Completing day N immediately opens day N+1 (even before its calendar date).
+    func isEarlyUnlocked(_ node: ChapterNode) -> Bool {
+        guard let index = chapters.firstIndex(where: { $0.id == node.id }), index > 0 else {
+            return false
+        }
+        return chapters[index - 1].isCompleted
+    }
+
+    /// Applies calendar + sequential early-unlock rules.
     func status(for node: ChapterNode, now: Date = .now) -> ChapterNodeStatus {
         if node.isCompleted {
             return .completed
         }
+        guard isUnlocked(node, now: now) else {
+            return .lockedFuture
+        }
         if calendar.isDateInToday(node.unlockDate) {
             return .activeToday
-        }
-        // Future midnight is still strictly after "now" until that day begins.
-        if node.unlockDate > now {
-            return .lockedFuture
         }
         return .available
     }
@@ -89,9 +106,25 @@ final class DailyProgressManager {
         }
     }
 
+    /// First unlocked incomplete chapter — gets the pulse + floating avatar.
+    var currentFocusChapter: ChapterNode? {
+        chapters.first { !$0.isCompleted && isUnlocked($0) }
+    }
+
+    func isCurrentFocus(_ node: ChapterNode) -> Bool {
+        currentFocusChapter?.id == node.id
+    }
+
     /// Kid-friendly countdown under locked future nodes.
     func countdownLabel(for node: ChapterNode, now: Date = .now) -> String? {
         guard status(for: node, now: now) == .lockedFuture else { return nil }
+
+        // If the previous chapter isn't done yet, nudge kids to finish it first.
+        if let index = chapters.firstIndex(where: { $0.id == node.id }),
+           index > 0,
+           !chapters[index - 1].isCompleted {
+            return "Finish Day \(chapters[index - 1].dayNumber)"
+        }
 
         if calendar.isDateInTomorrow(node.unlockDate) {
             return "Tomorrow"
@@ -104,7 +137,6 @@ final class DailyProgressManager {
             return "\(days) days"
         }
 
-        // Same calendar day edge cases / clock skew — show hours remaining.
         let hours = max(1, calendar.dateComponents([.hour], from: now, to: node.unlockDate).hour ?? 1)
         return hours == 1 ? "1 hr" : "\(hours) hrs"
     }

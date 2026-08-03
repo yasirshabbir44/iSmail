@@ -160,8 +160,14 @@ struct ContentView: View {
         if let today = progress.todaysChapter, !today.isCompleted {
             return "Day \(today.dayNumber) is unlocked — tap the glowing island!"
         }
+        if let focus = progress.currentFocusChapter {
+            if progress.isEarlyUnlocked(focus) {
+                return "Day \(focus.dayNumber) unlocked early — keep going!"
+            }
+            return "Day \(focus.dayNumber) is ready — tap the glowing island!"
+        }
         if completedCount == 0 {
-            return "Follow the winding path — a new chapter unlocks every day!"
+            return "Follow the winding path — finish a day to unlock the next!"
         }
         if completedCount >= progress.chapters.count {
             return "You cleared the whole path — amazing!"

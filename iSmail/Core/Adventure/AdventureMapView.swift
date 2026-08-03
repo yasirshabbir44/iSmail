@@ -75,7 +75,7 @@ struct AdventureMapView: View {
                             isChestReward: chapter.isChestReward,
                             avatarId: avatarId,
                             countdownLabel: progress.countdownLabel(for: chapter),
-                            isTodaysNode: chapterStatus == .activeToday
+                            isTodaysNode: progress.isCurrentFocus(chapter)
                         )
                     }
                     .buttonStyle(KidBounceButtonStyle())
@@ -121,8 +121,8 @@ struct AdventureMapView: View {
         switch status {
         case .completed: return "Opens lesson preview"
         case .activeToday: return "Today's chapter — opens lesson preview"
-        case .available: return "Opens lesson preview to start"
-        case .lockedFuture: return "Unlocks on a future day"
+        case .available: return "Unlocked — opens lesson preview to start"
+        case .lockedFuture: return "Finish the previous day or wait for the unlock date"
         }
     }
 
