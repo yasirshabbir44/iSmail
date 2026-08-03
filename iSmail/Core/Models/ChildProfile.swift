@@ -46,6 +46,14 @@ final class ChildProfile {
     static func clampedNickname(_ raw: String) -> String {
         String(raw.trimmingCharacters(in: .whitespacesAndNewlines).prefix(nicknameMaxLength))
     }
+
+    /// Removes per-profile UserDefaults progress so deleted profiles leave no orphans.
+    static func clearLocalProgress(for profileID: UUID) {
+        let defaults = UserDefaults.standard
+        let id = profileID.uuidString
+        defaults.removeObject(forKey: "adventure.streak.\(id)")
+        defaults.removeObject(forKey: "adventure.streakDay.\(id)")
+    }
 }
 
 // MARK: - Avatar catalog

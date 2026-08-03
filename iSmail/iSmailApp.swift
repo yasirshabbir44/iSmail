@@ -50,11 +50,17 @@ private struct RootView: View {
         }
         .animation(LearningTheme.forgivingSpring, value: session.activeProfileID)
         .onAppear {
-            // Drop a stale ID if the profile was deleted.
-            if let id = session.activeProfileID,
-               !profiles.contains(where: { $0.id == id }) {
-                session.clearActiveProfile()
-            }
+            dropStaleActiveProfileIfNeeded()
+        }
+        .onChange(of: profiles.map(\.id)) { _, _ in
+            dropStaleActiveProfileIfNeeded()
+        }
+    }
+
+    private func dropStaleActiveProfileIfNeeded() {
+        if let id = session.activeProfileID,
+           !profiles.contains(where: { $0.id == id }) {
+            session.clearActiveProfile()
         }
     }
 }
