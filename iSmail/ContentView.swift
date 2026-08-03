@@ -13,7 +13,7 @@ struct ContentView: View {
     @Environment(AppSession.self) private var session
 
     @State private var progress: DailyProgressManager
-    @State private var selectedTask: TaskNode?
+    @State private var selectedLesson: ChapterLesson?
     @State private var streakDays: Int = 3
     @State private var showDailySpin = false
     @State private var bonusDestination: BonusDestination?
@@ -63,14 +63,18 @@ struct ContentView: View {
 
                         pathIntro(narrow: isNarrow)
 
+                        worldsStrip(narrow: isNarrow)
+
                         playZones(narrow: isNarrow)
+
+                        chapterPathHeader
 
                         AdventureMapView(
                             chapters: progress.chapters,
                             progress: progress,
                             avatarId: profile.avatarId
                         ) { chapter in
-                            selectedTask = ChapterRepository.task(
+                            selectedLesson = ChapterRepository.lesson(
                                 for: chapter,
                                 ageYears: profile.ageInYears
                             )
@@ -85,11 +89,11 @@ struct ContentView: View {
                 .scrollIndicators(.hidden)
                 .background(PlayWorldBackground())
                 .toolbar(.hidden, for: .navigationBar)
-                .navigationDestination(item: $selectedTask) { task in
-                    ActivityRunnerView(task: task) { coins in
+                .navigationDestination(item: $selectedLesson) { lesson in
+                    ChapterRunnerView(lesson: lesson) { coins in
                         withAnimation(LearningTheme.successBump) {
                             profile.totalCoins = min(profile.totalCoins + max(0, coins), 9_999)
-                            progress.markCompleted(id: task.id)
+                            progress.markCompleted(id: lesson.id)
                         }
                         bumpStreakIfNeeded()
                         checkStickers()
@@ -130,7 +134,7 @@ struct ContentView: View {
     private func pathIntro(narrow: Bool) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Today's adventure")
+                Text("Today's lesson")
                     .font(.system(.title2, design: .rounded).weight(.heavy))
                     .foregroundStyle(LearningTheme.ink)
 
@@ -172,6 +176,105 @@ struct ContentView: View {
                 .shadow(color: LearningTheme.accent.opacity(0.10), radius: 12, y: 6)
         }
         .animation(mapSpring, value: completedCount)
+    }
+
+    // MARK: - Worlds strip
+
+    private func worldsStrip(narrow: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("Learning worlds", subtitle: "Chapter packs — finish one to unlock the next")
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: narrow ? 10 : 12) {
+                    ForEach(LearningWorld.allCases, id: \.self) { world in
+                        worldCard(world, narrow: narrow)
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+        }
+    }
+
+    private func worldCard(_ world: LearningWorld, narrow: Bool) -> some View {
+        let chapters = progress.chapters.filter { world.dayRange.contains($0.dayNumber) }
+        let done = chapters.filter(\.isCompleted).count
+        let total = max(chapters.count, 1)
+        let unlocked = chapters.contains { progress.isPlayable($0) }
+        let isCurrent = chapters.contains { progress.isCurrentFocus($0) }
+
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: world.symbolName)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(unlocked ? world.tint : LearningTheme.mutedInk)
+                    .frame(width: 36, height: 36)
+                    .background {
+                        Circle()
+                            .fill(unlocked ? world.tint.opacity(0.16) : LearningTheme.slot)
+                    }
+
+                if isCurrent {
+                    Text("NOW")
+                        .font(.system(.caption2, design: .rounded).weight(.heavy))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Capsule().fill(world.tint))
+                }
+
+                Spacer(minLength: 0)
+            }
+
+            Text(world.title)
+                .font(.system(.headline, design: .rounded).weight(.heavy))
+                .foregroundStyle(LearningTheme.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+
+            Text(world.subtitle)
+                .font(.system(.caption, design: .rounded).weight(.semibold))
+                .foregroundStyle(LearningTheme.mutedInk)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+
+            LessonProgressPips(
+                total: total,
+                completed: done,
+                tint: world.tint
+            )
+
+            Text("\(done)/\(total) chapters")
+                .font(.system(.caption2, design: .rounded).weight(.bold))
+                .foregroundStyle(LearningTheme.mutedInk)
+        }
+        .padding(14)
+        .frame(width: narrow ? 168 : 180, alignment: .leading)
+        .background {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(LearningTheme.surface.opacity(0.94))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .strokeBorder(
+                            isCurrent ? world.tint.opacity(0.55) : world.tint.opacity(0.22),
+                            lineWidth: isCurrent ? 3 : 2
+                        )
+                }
+                .shadow(color: world.tint.opacity(isCurrent ? 0.18 : 0.08), radius: 10, y: 5)
+        }
+        .opacity(unlocked || done > 0 ? 1 : 0.72)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(world.title), \(done) of \(total) chapters complete")
+    }
+
+    private var chapterPathHeader: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Chapter path")
+                .font(.system(.title3, design: .rounded).weight(.heavy))
+                .foregroundStyle(LearningTheme.ink)
+            Text("Each chapter has 3 short plays — warm-up, game, wrap-up")
+                .font(.system(.caption, design: .rounded).weight(.semibold))
+                .foregroundStyle(LearningTheme.mutedInk)
+        }
     }
 
     // MARK: - Play zones
@@ -423,21 +526,21 @@ struct ContentView: View {
 
     private var pathSubtitle: String {
         if let today = progress.todaysChapter, !today.isCompleted {
-            return "Day \(today.dayNumber) is unlocked — tap the glowing island!"
+            return "Chapter \(today.dayNumber) · \(today.world.title) — 3 short plays await!"
         }
         if let focus = progress.currentFocusChapter {
             if progress.isEarlyUnlocked(focus) {
-                return "Day \(focus.dayNumber) unlocked early — keep going!"
+                return "Chapter \(focus.dayNumber) unlocked early — keep the streak going!"
             }
-            return "Day \(focus.dayNumber) is ready — tap the glowing island!"
+            return "Chapter \(focus.dayNumber) · \(focus.world.title) is ready to play!"
         }
         if completedCount == 0 {
-            return "Follow the winding path — finish a day to unlock the next!"
+            return "Follow the chapter path — each lesson has a warm-up, game & wrap-up!"
         }
         if completedCount >= progress.chapters.count {
-            return "You cleared the whole path — amazing!"
+            return "You cleared every chapter — amazing explorer!"
         }
-        return "Great job! \(completedCount) of \(progress.chapters.count) islands cleared."
+        return "Great job! \(completedCount) of \(progress.chapters.count) chapters cleared."
     }
 
     private func bumpStreakIfNeeded() {

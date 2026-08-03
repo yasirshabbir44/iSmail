@@ -12,6 +12,16 @@ struct ActivityRunnerView: View {
     var onTaskCompleted: ((Int) -> Void)?
     /// When `true`, the prompt is read aloud once each time an activity loads.
     var autoReadPrompts: Bool = true
+    /// 1-based index inside a multi-step chapter (nil = standalone task).
+    var chapterStep: Int? = nil
+    /// Total activities in the chapter lesson.
+    var chapterStepCount: Int? = nil
+    /// When set, celebration offers "Next" instead of dismissing home.
+    var onContinueToNext: (() -> Void)? = nil
+    /// Coins shown / awarded — chapter runner may override with chapter total on the final step.
+    var displayedRewardCoins: Int? = nil
+    /// Title shown under the coach when completing a mid-chapter step.
+    var continueButtonTitle: String = "Next"
 
     @Environment(\.dismiss) private var dismiss
 
@@ -28,6 +38,19 @@ struct ActivityRunnerView: View {
 
     private var tint: Color {
         LearningTheme.activityTint(for: task.activityType)
+    }
+
+    private var rewardCoins: Int {
+        displayedRewardCoins ?? task.rewardCoins
+    }
+
+    private var isChapterFinalStep: Bool {
+        guard let chapterStep, let chapterStepCount else { return true }
+        return chapterStep >= chapterStepCount
+    }
+
+    private var hasChapterContinue: Bool {
+        onContinueToNext != nil && !isChapterFinalStep
     }
 
     private var coachMessage: String {
@@ -164,17 +187,31 @@ struct ActivityRunnerView: View {
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(task.activityType.displayName)
-                    .font(.system(.subheadline, design: .rounded).weight(.heavy))
-                    .foregroundStyle(tint)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                if let chapterStep, let chapterStepCount {
+                    Text("Activity \(chapterStep) of \(chapterStepCount)")
+                        .font(.system(.subheadline, design: .rounded).weight(.heavy))
+                        .foregroundStyle(tint)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
 
-                LessonProgressPips(
-                    total: progressTotal,
-                    completed: progressCompleted,
-                    tint: tint
-                )
+                    LessonProgressPips(
+                        total: chapterStepCount,
+                        completed: didComplete ? chapterStep : max(chapterStep - 1, 0),
+                        tint: tint
+                    )
+                } else {
+                    Text(task.activityType.displayName)
+                        .font(.system(.subheadline, design: .rounded).weight(.heavy))
+                        .foregroundStyle(tint)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+
+                    LessonProgressPips(
+                        total: progressTotal,
+                        completed: progressCompleted,
+                        tint: tint
+                    )
+                }
             }
 
             Spacer(minLength: 0)
@@ -182,7 +219,7 @@ struct ActivityRunnerView: View {
             HStack(spacing: 4) {
                 Image(systemName: "star.fill")
                     .foregroundStyle(LearningTheme.sunshine)
-                Text("+\(task.rewardCoins)")
+                Text("+\(rewardCoins)")
                     .font(.system(.subheadline, design: .rounded).weight(.heavy))
                     .foregroundStyle(LearningTheme.ink)
             }
@@ -192,7 +229,7 @@ struct ActivityRunnerView: View {
                 Capsule(style: .continuous)
                     .fill(LearningTheme.surface.opacity(0.95))
             }
-            .accessibilityLabel("Reward \(task.rewardCoins) stars")
+            .accessibilityLabel("Reward \(rewardCoins) stars")
         }
     }
 
@@ -376,13 +413,17 @@ struct ActivityRunnerView: View {
                 VStack(spacing: 14) {
                     BuddyCoachView(mood: .celebrating, size: narrow ? 80 : 100)
 
-                    Text("You got it!")
+                    Text(hasChapterContinue ? "Nice work!" : "You got it!")
                         .font(.system(.largeTitle, design: .rounded).weight(.heavy))
                         .foregroundStyle(LearningTheme.ink)
                         .minimumScaleFactor(0.75)
                         .lineLimit(1)
 
-                    Text("+\(task.rewardCoins) stars added")
+                    Text(
+                        hasChapterContinue
+                            ? "Next activity is ready"
+                            : "+\(rewardCoins) stars added"
+                    )
                         .font(.system(.title3, design: .rounded).weight(.bold))
                         .foregroundStyle(LearningTheme.mutedInk)
 
@@ -409,16 +450,33 @@ struct ActivityRunnerView: View {
 
     @ViewBuilder
     private func celebrationButtons(axis: Axis) -> some View {
-        Group {
-            if axis == .horizontal {
-                HStack(spacing: 12) {
-                    celebrationHomeButton
-                    celebrationMoreButton
-                }
-            } else {
-                VStack(spacing: 10) {
-                    celebrationMoreButton
-                    celebrationHomeButton
+        if hasChapterContinue {
+            Button {
+                onContinueToNext?()
+            } label: {
+                Text(continueButtonTitle)
+                    .font(.system(.title3, design: .rounded).weight(.heavy))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: LearningTheme.minTouchTarget)
+                    .background {
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .fill(LearningTheme.success)
+                    }
+            }
+            .buttonStyle(KidBounceButtonStyle())
+        } else {
+            Group {
+                if axis == .horizontal {
+                    HStack(spacing: 12) {
+                        celebrationHomeButton
+                        celebrationMoreButton
+                    }
+                } else {
+                    VStack(spacing: 10) {
+                        celebrationMoreButton
+                        celebrationHomeButton
+                    }
                 }
             }
         }
@@ -510,7 +568,9 @@ struct ActivityRunnerView: View {
         celebrationLine = celebrationLines.randomElement() ?? "Yay! You did it!"
         coachMood = .celebrating
         stepProgress = progressTotal
-        onTaskCompleted?(task.rewardCoins)
+        // Mid-chapter steps don't award coins — chapter runner awards the full reward at the end.
+        let coins = hasChapterContinue ? 0 : rewardCoins
+        onTaskCompleted?(coins)
     }
 
     private func resetSession() {

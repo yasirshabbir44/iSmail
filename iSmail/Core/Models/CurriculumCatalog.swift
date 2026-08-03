@@ -2,64 +2,79 @@
 //  CurriculumCatalog.swift
 //  iSmail
 //
-//  Unique lesson payloads for the adventure path — animals, routines, stories & memory.
+//  Multi-step chapter lessons — warm-up → play → wrap-up per themed world.
 //
 
 import Foundation
 
-/// Builds age-tailored `TaskNode` content for each adventure day.
+/// Builds age-tailored multi-activity `ChapterLesson` content for each adventure day.
 enum CurriculumCatalog: Sendable {
 
     // MARK: - Public resolve
 
+    static func lesson(
+        for chapter: ChapterNode,
+        ageYears: Int = 6
+    ) -> ChapterLesson {
+        let band = AgeBand.from(ageYears: ageYears)
+        let blueprint = blueprint(dayNumber: chapter.dayNumber)
+        let steps = blueprint.steps.map { step in
+            LessonStep(
+                id: step.id,
+                label: step.label,
+                task: tailor(step.task, band: band)
+            )
+        }
+
+        return ChapterLesson(
+            id: chapter.id,
+            dayNumber: chapter.dayNumber,
+            title: chapter.title,
+            subtitle: chapter.subtitle.isEmpty ? blueprint.subtitle : chapter.subtitle,
+            world: chapter.world,
+            skillTag: blueprint.skillTag,
+            primaryType: chapter.type,
+            steps: steps,
+            rewardCoins: chapter.rewardCoins,
+            isChestReward: chapter.isChestReward
+        )
+    }
+
+    /// Legacy single-task resolve — returns the first step of the chapter.
     static func task(
         for chapter: ChapterNode,
         ageYears: Int = 6
     ) -> TaskNode {
-        let band = AgeBand.from(ageYears: ageYears)
-        let raw = lesson(dayNumber: chapter.dayNumber) ?? fallback(for: chapter.type)
-        let tailored = tailor(raw, band: band)
-
-        return TaskNode(
-            id: chapter.id,
-            title: chapter.title,
-            prompt: tailored.prompt,
-            activityType: tailored.activityType,
-            payload: tailored.payload,
-            rewardCoins: chapter.rewardCoins
-        )
+        lesson(for: chapter, ageYears: ageYears).steps.first?.task
+            ?? fallbackTask(for: chapter.type)
     }
 
-    // MARK: - Day lessons (1…15 unique)
+    // MARK: - Blueprints (day 1…15)
 
-    private static func lesson(dayNumber: Int) -> TaskNode? {
+    private struct Blueprint {
+        var subtitle: String
+        var skillTag: String
+        var steps: [LessonStep]
+    }
+
+    private static func blueprint(dayNumber: Int) -> Blueprint {
         switch dayNumber {
-        case 1: return animalSounds
-        case 2: return pickTheApple
-        case 3: return morningSteps
-        case 4: return colorMatch
-        case 5: return findTheStar // chest
-        case 6: return bedtimeOrder
-        case 7: return petPals
-        case 8: return snackTime
-        case 9: return getReady
-        case 10: return braveLittleFox // chest story
-        case 11: return weatherMatch
-        case 12: return emotionFaces
-        case 13: return parkDaySteps
-        case 14: return memoryGarden
-        case 15: return starWishStory // chest story
-        default: return nil
-        }
-    }
-
-    private static func fallback(for type: ActivityType) -> TaskNode {
-        switch type {
-        case .dragAndDrop: return animalSounds
-        case .tapAndSelect: return pickTheApple
-        case .sequenceOrder: return morningSteps
-        case .storyTime: return braveLittleFox
-        case .memoryMatch: return memoryGarden
+        case 1: return animalSoundsChapter
+        case 2: return fruitFriendsChapter
+        case 3: return petHomesChapter
+        case 4: return colorWorldChapter
+        case 5: return morningStarChapter
+        case 6: return bedtimeChapter
+        case 7: return snackHeroChapter
+        case 8: return readyGoChapter
+        case 9: return bigFeelingsChapter
+        case 10: return braveFoxChapter
+        case 11: return weatherDayChapter
+        case 12: return parkAdventureChapter
+        case 13: return memoryGardenChapter
+        case 14: return kindWishChapter
+        case 15: return starWishFinale
+        default: return animalSoundsChapter
         }
     }
 
@@ -81,103 +96,274 @@ enum CurriculumCatalog: Sendable {
         return copy
     }
 
-    // MARK: - Drag & Drop lessons
+    private static func fallbackTask(for type: ActivityType) -> TaskNode {
+        switch type {
+        case .dragAndDrop: return makeAnimalMatch()
+        case .tapAndSelect: return makePickApple()
+        case .sequenceOrder: return makeMorningSteps()
+        case .storyTime: return makeBraveFoxStory()
+        case .memoryMatch: return makeMemoryGarden()
+        }
+    }
 
-    private static let animalSounds = TaskNode(
-        title: "Animal Sounds",
-        prompt: "Drag each animal to the sound it makes.",
-        activityType: .dragAndDrop,
-        payload: .dragAndDrop(
-            DragAndDropContent(
-                items: [
-                    DragItem(label: "Dog", symbolName: "dog.fill", matchKey: "dog"),
-                    DragItem(label: "Cat", symbolName: "cat.fill", matchKey: "cat"),
-                    DragItem(label: "Bird", symbolName: "bird.fill", matchKey: "bird"),
-                    DragItem(label: "Cow", symbolName: "hare.fill", matchKey: "cow")
-                ],
-                zones: [
-                    DropZone(label: "Bark", symbolName: "waveform", matchKey: "dog"),
-                    DropZone(label: "Meow", symbolName: "music.note", matchKey: "cat"),
-                    DropZone(label: "Chirp", symbolName: "microphone.fill", matchKey: "bird"),
-                    DropZone(label: "Moo", symbolName: "speaker.wave.2.fill", matchKey: "cow")
-                ]
-            )
-        ),
-        rewardCoins: 5
-    )
+    // MARK: - World 1: Animal Friends
 
-    private static let colorMatch = TaskNode(
-        title: "Color Match",
-        prompt: "Match each color to its sunny friend.",
-        activityType: .dragAndDrop,
-        payload: .dragAndDrop(
-            DragAndDropContent(
-                items: [
-                    DragItem(label: "Red", symbolName: "circle.fill", matchKey: "red"),
-                    DragItem(label: "Yellow", symbolName: "sun.max.fill", matchKey: "yellow"),
-                    DragItem(label: "Green", symbolName: "leaf.fill", matchKey: "green"),
-                    DragItem(label: "Blue", symbolName: "drop.fill", matchKey: "blue")
-                ],
-                zones: [
-                    DropZone(label: "Apple", symbolName: "apple.logo", matchKey: "red"),
-                    DropZone(label: "Sun", symbolName: "sun.max.fill", matchKey: "yellow"),
-                    DropZone(label: "Tree", symbolName: "leaf.circle.fill", matchKey: "green"),
-                    DropZone(label: "Sky", symbolName: "cloud.fill", matchKey: "blue")
-                ]
-            )
-        ),
-        rewardCoins: 5
-    )
+    private static var animalSoundsChapter: Blueprint {
+        Blueprint(
+            subtitle: "Meet animal pals and match their sounds",
+            skillTag: "Animals",
+            steps: [
+                LessonStep(label: "Warm-up", task: makeWhichAnimalBarks()),
+                LessonStep(label: "Match", task: makeAnimalMatch()),
+                LessonStep(label: "Memory", task: makeAnimalMemory())
+            ]
+        )
+    }
 
-    private static let petPals = TaskNode(
-        title: "Pet Pals",
-        prompt: "Help each pet find its favorite home.",
-        activityType: .dragAndDrop,
-        payload: .dragAndDrop(
-            DragAndDropContent(
-                items: [
-                    DragItem(label: "Fish", symbolName: "fish.fill", matchKey: "fish"),
-                    DragItem(label: "Bunny", symbolName: "hare.fill", matchKey: "bunny"),
-                    DragItem(label: "Bird", symbolName: "bird.fill", matchKey: "bird"),
-                    DragItem(label: "Puppy", symbolName: "dog.fill", matchKey: "puppy")
-                ],
-                zones: [
-                    DropZone(label: "Tank", symbolName: "drop.fill", matchKey: "fish"),
-                    DropZone(label: "Garden", symbolName: "leaf.fill", matchKey: "bunny"),
-                    DropZone(label: "Nest", symbolName: "house.fill", matchKey: "bird"),
-                    DropZone(label: "Bed", symbolName: "bed.double.fill", matchKey: "puppy")
-                ]
-            )
-        ),
-        rewardCoins: 5
-    )
+    private static var fruitFriendsChapter: Blueprint {
+        Blueprint(
+            subtitle: "Find fruits and match sunny colors",
+            skillTag: "Focus",
+            steps: [
+                LessonStep(label: "Warm-up", task: makePickApple()),
+                LessonStep(label: "Match", task: makeColorMatch()),
+                LessonStep(label: "Choose", task: makeSnackMilk())
+            ]
+        )
+    }
 
-    private static let weatherMatch = TaskNode(
-        title: "Weather Match",
-        prompt: "Match the weather to what you might wear or use.",
-        activityType: .dragAndDrop,
-        payload: .dragAndDrop(
-            DragAndDropContent(
-                items: [
-                    DragItem(label: "Rain", symbolName: "cloud.rain.fill", matchKey: "rain"),
-                    DragItem(label: "Sun", symbolName: "sun.max.fill", matchKey: "sun"),
-                    DragItem(label: "Snow", symbolName: "snowflake", matchKey: "snow"),
-                    DragItem(label: "Wind", symbolName: "wind", matchKey: "wind")
-                ],
-                zones: [
-                    DropZone(label: "Umbrella", symbolName: "umbrella.fill", matchKey: "rain"),
-                    DropZone(label: "Hat", symbolName: "sunglasses", matchKey: "sun"),
-                    DropZone(label: "Coat", symbolName: "cloud.snow.fill", matchKey: "snow"),
-                    DropZone(label: "Kite", symbolName: "flag.fill", matchKey: "wind")
-                ]
-            )
-        ),
-        rewardCoins: 6
-    )
+    private static var petHomesChapter: Blueprint {
+        Blueprint(
+            subtitle: "Help every pet find a cozy home",
+            skillTag: "Matching",
+            steps: [
+                LessonStep(label: "Warm-up", task: makePickPet()),
+                LessonStep(label: "Match", task: makePetHomes()),
+                LessonStep(label: "Memory", task: makePetMemory())
+            ]
+        )
+    }
 
-    // MARK: - Tap & Select lessons
+    // MARK: - World 2: Daily Life
 
-    private static let pickTheApple: TaskNode = {
+    private static var colorWorldChapter: Blueprint {
+        Blueprint(
+            subtitle: "Colors, shapes, and morning routines",
+            skillTag: "Colors",
+            steps: [
+                LessonStep(label: "Warm-up", task: makeFindStar()),
+                LessonStep(label: "Match", task: makeColorMatch()),
+                LessonStep(label: "Order", task: makeMorningSteps())
+            ]
+        )
+    }
+
+    private static var morningStarChapter: Blueprint {
+        Blueprint(
+            subtitle: "Start the day with stars and steps",
+            skillTag: "Routines",
+            steps: [
+                LessonStep(label: "Warm-up", task: makeFindStar()),
+                LessonStep(label: "Order", task: makeMorningSteps()),
+                LessonStep(label: "Choose", task: makePickApple())
+            ]
+        )
+    }
+
+    private static var bedtimeChapter: Blueprint {
+        Blueprint(
+            subtitle: "A calm bedtime from bath to sleep",
+            skillTag: "Routines",
+            steps: [
+                LessonStep(label: "Warm-up", task: makeSleepyChoice()),
+                LessonStep(label: "Order", task: makeBedtimeOrder()),
+                LessonStep(label: "Story", task: makeStarWishStory())
+            ]
+        )
+    }
+
+    // MARK: - World 3: Feelings
+
+    private static var snackHeroChapter: Blueprint {
+        Blueprint(
+            subtitle: "Healthy snacks and happy choices",
+            skillTag: "Choices",
+            steps: [
+                LessonStep(label: "Warm-up", task: makeSnackMilk()),
+                LessonStep(label: "Match", task: makePetHomes()),
+                LessonStep(label: "Order", task: makeGetReady())
+            ]
+        )
+    }
+
+    private static var readyGoChapter: Blueprint {
+        Blueprint(
+            subtitle: "Getting ready to go out into the world",
+            skillTag: "Sequencing",
+            steps: [
+                LessonStep(label: "Warm-up", task: makeEmotionHappy()),
+                LessonStep(label: "Order", task: makeGetReady()),
+                LessonStep(label: "Match", task: makeWeatherMatch())
+            ]
+        )
+    }
+
+    private static var bigFeelingsChapter: Blueprint {
+        Blueprint(
+            subtitle: "Name feelings and cheer for friends",
+            skillTag: "Feelings",
+            steps: [
+                LessonStep(label: "Warm-up", task: makeEmotionHappy()),
+                LessonStep(label: "Choose", task: makeEmotionSurprise()),
+                LessonStep(label: "Memory", task: makeFeelingsMemory())
+            ]
+        )
+    }
+
+    // MARK: - World 4: Nature
+
+    private static var braveFoxChapter: Blueprint {
+        Blueprint(
+            subtitle: "A brave fox story and forest friends",
+            skillTag: "Listening",
+            steps: [
+                LessonStep(label: "Warm-up", task: makeWhichAnimalBarks()),
+                LessonStep(label: "Story", task: makeBraveFoxStory()),
+                LessonStep(label: "Memory", task: makeAnimalMemory())
+            ]
+        )
+    }
+
+    private static var weatherDayChapter: Blueprint {
+        Blueprint(
+            subtitle: "Match weather to what you might need",
+            skillTag: "Nature",
+            steps: [
+                LessonStep(label: "Warm-up", task: makeWeatherChoice()),
+                LessonStep(label: "Match", task: makeWeatherMatch()),
+                LessonStep(label: "Order", task: makeParkDaySteps())
+            ]
+        )
+    }
+
+    private static var parkAdventureChapter: Blueprint {
+        Blueprint(
+            subtitle: "Pack, play, snack — a perfect park day",
+            skillTag: "Adventure",
+            steps: [
+                LessonStep(label: "Warm-up", task: makePickPet()),
+                LessonStep(label: "Order", task: makeParkDaySteps()),
+                LessonStep(label: "Match", task: makeWeatherMatch())
+            ]
+        )
+    }
+
+    // MARK: - World 5: Story Stars
+
+    private static var memoryGardenChapter: Blueprint {
+        Blueprint(
+            subtitle: "Flip cards in a blooming memory garden",
+            skillTag: "Memory",
+            steps: [
+                LessonStep(label: "Warm-up", task: makeFindStar()),
+                LessonStep(label: "Memory", task: makeMemoryGarden()),
+                LessonStep(label: "Match", task: makeColorMatch())
+            ]
+        )
+    }
+
+    private static var kindWishChapter: Blueprint {
+        Blueprint(
+            subtitle: "Practice kindness before the finale",
+            skillTag: "Kindness",
+            steps: [
+                LessonStep(label: "Warm-up", task: makeEmotionHappy()),
+                LessonStep(label: "Order", task: makeBedtimeOrder()),
+                LessonStep(label: "Story", task: makeStarWishStory())
+            ]
+        )
+    }
+
+    private static var starWishFinale: Blueprint {
+        Blueprint(
+            subtitle: "The big star-wish story — you made it!",
+            skillTag: "Finale",
+            steps: [
+                LessonStep(label: "Warm-up", task: makeFindStar()),
+                LessonStep(label: "Memory", task: makeMemoryGarden()),
+                LessonStep(label: "Story", task: makeStarWishStory())
+            ]
+        )
+    }
+
+    // MARK: - Task factories (shared building blocks)
+
+    private static func makeWhichAnimalBarks() -> TaskNode {
+        let dog = SelectChoice(label: "Dog", symbolName: "dog.fill")
+        let cat = SelectChoice(label: "Cat", symbolName: "cat.fill")
+        let bird = SelectChoice(label: "Bird", symbolName: "bird.fill")
+        let fish = SelectChoice(label: "Fish", symbolName: "fish.fill")
+        return TaskNode(
+            title: "Who Barks?",
+            prompt: "Which animal says bark? Tap your answer.",
+            activityType: .tapAndSelect,
+            payload: .tapAndSelect(
+                TapAndSelectContent(
+                    choices: [cat, bird, dog, fish],
+                    correctChoiceID: dog.id
+                )
+            ),
+            rewardCoins: 2
+        )
+    }
+
+    private static func makeAnimalMatch() -> TaskNode {
+        TaskNode(
+            title: "Animal Sounds",
+            prompt: "Drag each animal to the sound it makes.",
+            activityType: .dragAndDrop,
+            payload: .dragAndDrop(
+                DragAndDropContent(
+                    items: [
+                        DragItem(label: "Dog", symbolName: "dog.fill", matchKey: "dog"),
+                        DragItem(label: "Cat", symbolName: "cat.fill", matchKey: "cat"),
+                        DragItem(label: "Bird", symbolName: "bird.fill", matchKey: "bird"),
+                        DragItem(label: "Cow", symbolName: "hare.fill", matchKey: "cow")
+                    ],
+                    zones: [
+                        DropZone(label: "Bark", symbolName: "waveform", matchKey: "dog"),
+                        DropZone(label: "Meow", symbolName: "music.note", matchKey: "cat"),
+                        DropZone(label: "Chirp", symbolName: "microphone.fill", matchKey: "bird"),
+                        DropZone(label: "Moo", symbolName: "speaker.wave.2.fill", matchKey: "cow")
+                    ]
+                )
+            ),
+            rewardCoins: 3
+        )
+    }
+
+    private static func makeAnimalMemory() -> TaskNode {
+        TaskNode(
+            title: "Animal Pairs",
+            prompt: "Flip two cards. Find matching animal friends!",
+            activityType: .memoryMatch,
+            payload: .memoryMatch(
+                MemoryMatchContent(
+                    pairs: [
+                        MemoryPair(label: "Dog", symbolName: "dog.fill"),
+                        MemoryPair(label: "Cat", symbolName: "cat.fill"),
+                        MemoryPair(label: "Bird", symbolName: "bird.fill"),
+                        MemoryPair(label: "Fish", symbolName: "fish.fill"),
+                        MemoryPair(label: "Bunny", symbolName: "hare.fill"),
+                        MemoryPair(label: "Bee", symbolName: "ladybug.fill")
+                    ]
+                )
+            ),
+            rewardCoins: 3
+        )
+    }
+
+    private static func makePickApple() -> TaskNode {
         let apple = SelectChoice(label: "Apple", symbolName: "apple.logo")
         let banana = SelectChoice(label: "Banana", symbolName: "leaf.fill")
         let grape = SelectChoice(label: "Grape", symbolName: "circle.grid.2x2.fill")
@@ -193,31 +379,36 @@ enum CurriculumCatalog: Sendable {
                     correctChoiceID: apple.id
                 )
             ),
-            rewardCoins: 6
+            rewardCoins: 2
         )
-    }()
+    }
 
-    private static let findTheStar: TaskNode = {
-        let star = SelectChoice(label: "Star", symbolName: "star.fill")
-        let moon = SelectChoice(label: "Moon", symbolName: "moon.fill")
-        let cloud = SelectChoice(label: "Cloud", symbolName: "cloud.fill")
-        let rain = SelectChoice(label: "Rain", symbolName: "cloud.rain.fill")
-        let bolt = SelectChoice(label: "Bolt", symbolName: "bolt.fill")
-        return TaskNode(
-            title: "Find the Shape",
-            prompt: "Tap the bright shining star!",
-            activityType: .tapAndSelect,
-            payload: .tapAndSelect(
-                TapAndSelectContent(
-                    choices: [moon, star, cloud, rain, bolt],
-                    correctChoiceID: star.id
+    private static func makeColorMatch() -> TaskNode {
+        TaskNode(
+            title: "Color Match",
+            prompt: "Match each color to its sunny friend.",
+            activityType: .dragAndDrop,
+            payload: .dragAndDrop(
+                DragAndDropContent(
+                    items: [
+                        DragItem(label: "Red", symbolName: "circle.fill", matchKey: "red"),
+                        DragItem(label: "Yellow", symbolName: "sun.max.fill", matchKey: "yellow"),
+                        DragItem(label: "Green", symbolName: "leaf.fill", matchKey: "green"),
+                        DragItem(label: "Blue", symbolName: "drop.fill", matchKey: "blue")
+                    ],
+                    zones: [
+                        DropZone(label: "Apple", symbolName: "apple.logo", matchKey: "red"),
+                        DropZone(label: "Sun", symbolName: "sun.max.fill", matchKey: "yellow"),
+                        DropZone(label: "Tree", symbolName: "leaf.circle.fill", matchKey: "green"),
+                        DropZone(label: "Sky", symbolName: "cloud.fill", matchKey: "blue")
+                    ]
                 )
             ),
-            rewardCoins: 6
+            rewardCoins: 3
         )
-    }()
+    }
 
-    private static let snackTime: TaskNode = {
+    private static func makeSnackMilk() -> TaskNode {
         let milk = SelectChoice(label: "Milk", symbolName: "cup.and.saucer.fill")
         let soda = SelectChoice(label: "Soda", symbolName: "takeoutbag.and.cup.and.straw.fill")
         let juice = SelectChoice(label: "Juice", symbolName: "wineglass.fill")
@@ -233,33 +424,96 @@ enum CurriculumCatalog: Sendable {
                     correctChoiceID: milk.id
                 )
             ),
-            rewardCoins: 6
+            rewardCoins: 2
         )
-    }()
+    }
 
-    private static let emotionFaces: TaskNode = {
-        let happy = SelectChoice(label: "Happy", symbolName: "face.smiling.inverse")
-        let sad = SelectChoice(label: "Sad", symbolName: "cloud.rain.fill")
-        let mad = SelectChoice(label: "Mad", symbolName: "flame.fill")
-        let sleepy = SelectChoice(label: "Sleepy", symbolName: "moon.zzz.fill")
-        let wow = SelectChoice(label: "Surprised", symbolName: "sparkles")
+    private static func makePickPet() -> TaskNode {
+        let puppy = SelectChoice(label: "Puppy", symbolName: "dog.fill")
+        let rock = SelectChoice(label: "Rock", symbolName: "circle.fill")
+        let cloud = SelectChoice(label: "Cloud", symbolName: "cloud.fill")
+        let key = SelectChoice(label: "Key", symbolName: "key.fill")
         return TaskNode(
-            title: "Feelings",
-            prompt: "Someone just got a hug. Which feeling fits?",
+            title: "Pet Pals",
+            prompt: "Which one is a soft puppy friend?",
             activityType: .tapAndSelect,
             payload: .tapAndSelect(
                 TapAndSelectContent(
-                    choices: [sad, mad, happy, sleepy, wow],
-                    correctChoiceID: happy.id
+                    choices: [rock, puppy, cloud, key],
+                    correctChoiceID: puppy.id
                 )
             ),
-            rewardCoins: 6
+            rewardCoins: 2
         )
-    }()
+    }
 
-    // MARK: - Sequence lessons
+    private static func makePetHomes() -> TaskNode {
+        TaskNode(
+            title: "Pet Homes",
+            prompt: "Help each pet find its favorite home.",
+            activityType: .dragAndDrop,
+            payload: .dragAndDrop(
+                DragAndDropContent(
+                    items: [
+                        DragItem(label: "Fish", symbolName: "fish.fill", matchKey: "fish"),
+                        DragItem(label: "Bunny", symbolName: "hare.fill", matchKey: "bunny"),
+                        DragItem(label: "Bird", symbolName: "bird.fill", matchKey: "bird"),
+                        DragItem(label: "Puppy", symbolName: "dog.fill", matchKey: "puppy")
+                    ],
+                    zones: [
+                        DropZone(label: "Tank", symbolName: "drop.fill", matchKey: "fish"),
+                        DropZone(label: "Garden", symbolName: "leaf.fill", matchKey: "bunny"),
+                        DropZone(label: "Nest", symbolName: "house.fill", matchKey: "bird"),
+                        DropZone(label: "Bed", symbolName: "bed.double.fill", matchKey: "puppy")
+                    ]
+                )
+            ),
+            rewardCoins: 3
+        )
+    }
 
-    private static let morningSteps: TaskNode = {
+    private static func makePetMemory() -> TaskNode {
+        TaskNode(
+            title: "Pet Pairs",
+            prompt: "Find matching pet pals!",
+            activityType: .memoryMatch,
+            payload: .memoryMatch(
+                MemoryMatchContent(
+                    pairs: [
+                        MemoryPair(label: "Fish", symbolName: "fish.fill"),
+                        MemoryPair(label: "Bunny", symbolName: "hare.fill"),
+                        MemoryPair(label: "Bird", symbolName: "bird.fill"),
+                        MemoryPair(label: "Puppy", symbolName: "dog.fill"),
+                        MemoryPair(label: "Cat", symbolName: "cat.fill"),
+                        MemoryPair(label: "Bee", symbolName: "ladybug.fill")
+                    ]
+                )
+            ),
+            rewardCoins: 3
+        )
+    }
+
+    private static func makeFindStar() -> TaskNode {
+        let star = SelectChoice(label: "Star", symbolName: "star.fill")
+        let moon = SelectChoice(label: "Moon", symbolName: "moon.fill")
+        let cloud = SelectChoice(label: "Cloud", symbolName: "cloud.fill")
+        let rain = SelectChoice(label: "Rain", symbolName: "cloud.rain.fill")
+        let bolt = SelectChoice(label: "Bolt", symbolName: "bolt.fill")
+        return TaskNode(
+            title: "Find the Star",
+            prompt: "Tap the bright shining star!",
+            activityType: .tapAndSelect,
+            payload: .tapAndSelect(
+                TapAndSelectContent(
+                    choices: [moon, star, cloud, rain, bolt],
+                    correctChoiceID: star.id
+                )
+            ),
+            rewardCoins: 2
+        )
+    }
+
+    private static func makeMorningSteps() -> TaskNode {
         let wake = SequenceItem(label: "Wake", symbolName: "sun.horizon.fill", stepNumber: 1)
         let brush = SequenceItem(label: "Brush", symbolName: "face.smiling", stepNumber: 2)
         let dress = SequenceItem(label: "Dress", symbolName: "tshirt.fill", stepNumber: 3)
@@ -276,11 +530,30 @@ enum CurriculumCatalog: Sendable {
                     correctOrder: [wake.id, brush.id, dress.id, eat.id, bag.id]
                 )
             ),
-            rewardCoins: 7
+            rewardCoins: 3
         )
-    }()
+    }
 
-    private static let bedtimeOrder: TaskNode = {
+    private static func makeSleepyChoice() -> TaskNode {
+        let bed = SelectChoice(label: "Bed", symbolName: "bed.double.fill")
+        let bike = SelectChoice(label: "Bike", symbolName: "bicycle")
+        let ball = SelectChoice(label: "Ball", symbolName: "sportscourt.fill")
+        let car = SelectChoice(label: "Car", symbolName: "car.fill")
+        return TaskNode(
+            title: "Sleepy Time",
+            prompt: "Where do we sleep at night?",
+            activityType: .tapAndSelect,
+            payload: .tapAndSelect(
+                TapAndSelectContent(
+                    choices: [bike, bed, ball, car],
+                    correctChoiceID: bed.id
+                )
+            ),
+            rewardCoins: 2
+        )
+    }
+
+    private static func makeBedtimeOrder() -> TaskNode {
         let bath = SequenceItem(label: "Bath", symbolName: "drop.fill", stepNumber: 1)
         let pajamas = SequenceItem(label: "PJs", symbolName: "tshirt.fill", stepNumber: 2)
         let brush = SequenceItem(label: "Brush", symbolName: "face.smiling", stepNumber: 3)
@@ -297,11 +570,11 @@ enum CurriculumCatalog: Sendable {
                     correctOrder: [bath.id, pajamas.id, brush.id, story.id, sleep.id]
                 )
             ),
-            rewardCoins: 7
+            rewardCoins: 3
         )
-    }()
+    }
 
-    private static let getReady: TaskNode = {
+    private static func makeGetReady() -> TaskNode {
         let shoes = SequenceItem(label: "Shoes", symbolName: "figure.walk", stepNumber: 1)
         let coat = SequenceItem(label: "Coat", symbolName: "cloud.snow.fill", stepNumber: 2)
         let keys = SequenceItem(label: "Keys", symbolName: "key.fill", stepNumber: 3)
@@ -318,34 +591,71 @@ enum CurriculumCatalog: Sendable {
                     correctOrder: [shoes.id, coat.id, keys.id, door.id, wave.id]
                 )
             ),
-            rewardCoins: 7
+            rewardCoins: 3
         )
-    }()
+    }
 
-    private static let parkDaySteps: TaskNode = {
-        let pack = SequenceItem(label: "Pack", symbolName: "basket.fill", stepNumber: 1)
-        let walk = SequenceItem(label: "Walk", symbolName: "figure.walk", stepNumber: 2)
-        let play = SequenceItem(label: "Play", symbolName: "sportscourt.fill", stepNumber: 3)
-        let snack = SequenceItem(label: "Snack", symbolName: "fork.knife", stepNumber: 4)
-        let home = SequenceItem(label: "Home", symbolName: "house.fill", stepNumber: 5)
-        let shuffled = [play, home, pack, snack, walk]
+    private static func makeEmotionHappy() -> TaskNode {
+        let happy = SelectChoice(label: "Happy", symbolName: "face.smiling.inverse")
+        let sad = SelectChoice(label: "Sad", symbolName: "cloud.rain.fill")
+        let mad = SelectChoice(label: "Mad", symbolName: "flame.fill")
+        let sleepy = SelectChoice(label: "Sleepy", symbolName: "moon.zzz.fill")
+        let wow = SelectChoice(label: "Surprised", symbolName: "sparkles")
         return TaskNode(
-            title: "Park Day Steps",
-            prompt: "A fun park day — arrange the adventure!",
-            activityType: .sequenceOrder,
-            payload: .sequenceOrder(
-                SequenceOrderContent(
-                    items: shuffled,
-                    correctOrder: [pack.id, walk.id, play.id, snack.id, home.id]
+            title: "Feelings",
+            prompt: "Someone just got a hug. Which feeling fits?",
+            activityType: .tapAndSelect,
+            payload: .tapAndSelect(
+                TapAndSelectContent(
+                    choices: [sad, mad, happy, sleepy, wow],
+                    correctChoiceID: happy.id
                 )
             ),
-            rewardCoins: 7
+            rewardCoins: 2
         )
-    }()
+    }
 
-    // MARK: - Story lessons
+    private static func makeEmotionSurprise() -> TaskNode {
+        let wow = SelectChoice(label: "Surprised", symbolName: "sparkles")
+        let sleepy = SelectChoice(label: "Sleepy", symbolName: "moon.zzz.fill")
+        let mad = SelectChoice(label: "Mad", symbolName: "flame.fill")
+        let sad = SelectChoice(label: "Sad", symbolName: "cloud.rain.fill")
+        return TaskNode(
+            title: "Big Surprise",
+            prompt: "A birthday cake appears! How do you feel?",
+            activityType: .tapAndSelect,
+            payload: .tapAndSelect(
+                TapAndSelectContent(
+                    choices: [sleepy, mad, wow, sad],
+                    correctChoiceID: wow.id
+                )
+            ),
+            rewardCoins: 2
+        )
+    }
 
-    private static let braveLittleFox: TaskNode = {
+    private static func makeFeelingsMemory() -> TaskNode {
+        TaskNode(
+            title: "Feeling Faces",
+            prompt: "Match the feeling friends!",
+            activityType: .memoryMatch,
+            payload: .memoryMatch(
+                MemoryMatchContent(
+                    pairs: [
+                        MemoryPair(label: "Happy", symbolName: "face.smiling.inverse"),
+                        MemoryPair(label: "Star", symbolName: "star.fill"),
+                        MemoryPair(label: "Heart", symbolName: "heart.fill"),
+                        MemoryPair(label: "Sun", symbolName: "sun.max.fill"),
+                        MemoryPair(label: "Moon", symbolName: "moon.fill"),
+                        MemoryPair(label: "Sparkle", symbolName: "sparkles")
+                    ]
+                )
+            ),
+            rewardCoins: 3
+        )
+    }
+
+    private static func makeBraveFoxStory() -> TaskNode {
         let den = SelectChoice(label: "In a den", symbolName: "house.fill")
         let sea = SelectChoice(label: "In the sea", symbolName: "water.waves")
         let cloud = SelectChoice(label: "On a cloud", symbolName: "cloud.fill")
@@ -382,11 +692,97 @@ enum CurriculumCatalog: Sendable {
                     ]
                 )
             ),
-            rewardCoins: 8
+            rewardCoins: 4
         )
-    }()
+    }
 
-    private static let starWishStory: TaskNode = {
+    private static func makeWeatherChoice() -> TaskNode {
+        let rain = SelectChoice(label: "Rain", symbolName: "cloud.rain.fill")
+        let pizza = SelectChoice(label: "Pizza", symbolName: "fork.knife")
+        let shoe = SelectChoice(label: "Shoe", symbolName: "figure.walk")
+        let book = SelectChoice(label: "Book", symbolName: "book.fill")
+        return TaskNode(
+            title: "Weather Check",
+            prompt: "Which one is rainy weather?",
+            activityType: .tapAndSelect,
+            payload: .tapAndSelect(
+                TapAndSelectContent(
+                    choices: [pizza, rain, shoe, book],
+                    correctChoiceID: rain.id
+                )
+            ),
+            rewardCoins: 2
+        )
+    }
+
+    private static func makeWeatherMatch() -> TaskNode {
+        TaskNode(
+            title: "Weather Match",
+            prompt: "Match the weather to what you might wear or use.",
+            activityType: .dragAndDrop,
+            payload: .dragAndDrop(
+                DragAndDropContent(
+                    items: [
+                        DragItem(label: "Rain", symbolName: "cloud.rain.fill", matchKey: "rain"),
+                        DragItem(label: "Sun", symbolName: "sun.max.fill", matchKey: "sun"),
+                        DragItem(label: "Snow", symbolName: "snowflake", matchKey: "snow"),
+                        DragItem(label: "Wind", symbolName: "wind", matchKey: "wind")
+                    ],
+                    zones: [
+                        DropZone(label: "Umbrella", symbolName: "umbrella.fill", matchKey: "rain"),
+                        DropZone(label: "Hat", symbolName: "sunglasses", matchKey: "sun"),
+                        DropZone(label: "Coat", symbolName: "cloud.snow.fill", matchKey: "snow"),
+                        DropZone(label: "Kite", symbolName: "flag.fill", matchKey: "wind")
+                    ]
+                )
+            ),
+            rewardCoins: 3
+        )
+    }
+
+    private static func makeParkDaySteps() -> TaskNode {
+        let pack = SequenceItem(label: "Pack", symbolName: "basket.fill", stepNumber: 1)
+        let walk = SequenceItem(label: "Walk", symbolName: "figure.walk", stepNumber: 2)
+        let play = SequenceItem(label: "Play", symbolName: "sportscourt.fill", stepNumber: 3)
+        let snack = SequenceItem(label: "Snack", symbolName: "fork.knife", stepNumber: 4)
+        let home = SequenceItem(label: "Home", symbolName: "house.fill", stepNumber: 5)
+        let shuffled = [play, home, pack, snack, walk]
+        return TaskNode(
+            title: "Park Day Steps",
+            prompt: "A fun park day — arrange the adventure!",
+            activityType: .sequenceOrder,
+            payload: .sequenceOrder(
+                SequenceOrderContent(
+                    items: shuffled,
+                    correctOrder: [pack.id, walk.id, play.id, snack.id, home.id]
+                )
+            ),
+            rewardCoins: 3
+        )
+    }
+
+    private static func makeMemoryGarden() -> TaskNode {
+        TaskNode(
+            title: "Memory Garden",
+            prompt: "Flip two cards. Find matching flower friends!",
+            activityType: .memoryMatch,
+            payload: .memoryMatch(
+                MemoryMatchContent(
+                    pairs: [
+                        MemoryPair(label: "Rose", symbolName: "heart.fill"),
+                        MemoryPair(label: "Sun", symbolName: "sun.max.fill"),
+                        MemoryPair(label: "Leaf", symbolName: "leaf.fill"),
+                        MemoryPair(label: "Bee", symbolName: "ladybug.fill"),
+                        MemoryPair(label: "Moon", symbolName: "moon.fill"),
+                        MemoryPair(label: "Drop", symbolName: "drop.fill")
+                    ]
+                )
+            ),
+            rewardCoins: 3
+        )
+    }
+
+    private static func makeStarWishStory() -> TaskNode {
         let wish = SelectChoice(label: "A kind wish", symbolName: "heart.fill")
         let shout = SelectChoice(label: "A loud shout", symbolName: "speaker.wave.3.fill")
         let race = SelectChoice(label: "A race car", symbolName: "car.fill")
@@ -423,33 +819,12 @@ enum CurriculumCatalog: Sendable {
                     ]
                 )
             ),
-            rewardCoins: 8
+            rewardCoins: 4
         )
-    }()
-
-    // MARK: - Memory lessons
-
-    private static let memoryGarden = TaskNode(
-        title: "Memory Garden",
-        prompt: "Flip two cards. Find matching flower friends!",
-        activityType: .memoryMatch,
-        payload: .memoryMatch(
-            MemoryMatchContent(
-                pairs: [
-                    MemoryPair(label: "Rose", symbolName: "heart.fill"),
-                    MemoryPair(label: "Sun", symbolName: "sun.max.fill"),
-                    MemoryPair(label: "Leaf", symbolName: "leaf.fill"),
-                    MemoryPair(label: "Bee", symbolName: "ladybug.fill"),
-                    MemoryPair(label: "Moon", symbolName: "moon.fill"),
-                    MemoryPair(label: "Drop", symbolName: "drop.fill")
-                ]
-            )
-        ),
-        rewardCoins: 8
-    )
+    }
 }
 
-// MARK: - Preview samples (kept for Xcode previews)
+// MARK: - Preview samples
 
 extension DragAndDropContent {
     static let previewAnimals = DragAndDropContent(
@@ -572,4 +947,23 @@ extension TaskNode {
         .previewStoryTime,
         .previewMemoryMatch
     ]
+}
+
+extension ChapterLesson {
+    static let previewAnimalFriends = ChapterLesson(
+        id: UUID(),
+        dayNumber: 1,
+        title: "Animal Sounds",
+        subtitle: "Meet animal pals and match their sounds",
+        world: .animalFriends,
+        skillTag: "Animals",
+        primaryType: .dragAndDrop,
+        steps: [
+            LessonStep(label: "Warm-up", task: .previewTapAndSelect),
+            LessonStep(label: "Match", task: .previewDragAndDrop),
+            LessonStep(label: "Memory", task: .previewMemoryMatch)
+        ],
+        rewardCoins: 12,
+        isChestReward: false
+    )
 }
