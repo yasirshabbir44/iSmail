@@ -51,6 +51,10 @@ struct ActivityRunnerView: View {
             return "The glowing card is a friendly clue…"
         case .sequenceOrder:
             return "Warm slots need a swap — you've got this!"
+        case .storyTime:
+            return "Listen closely — the glowing answer is a clue!"
+        case .memoryMatch:
+            return "Remember the glowing pair — you've got this!"
         }
     }
 
@@ -228,6 +232,10 @@ struct ActivityRunnerView: View {
         switch task.payload {
         case .dragAndDrop(let content):
             return max(content.items.count, 1)
+        case .memoryMatch(let content):
+            return max(content.pairs.count, 1)
+        case .storyTime(let content):
+            return max(content.pages.count, 1)
         case .tapAndSelect, .sequenceOrder:
             return 1
         }
@@ -294,6 +302,28 @@ struct ActivityRunnerView: View {
                 onCorrectAttempt: {
                     handleHit()
                     stepProgress = 1
+                },
+                onComplete: handleComplete
+            )
+        case .storyTime(let content):
+            StoryTimeTaskView(
+                content: content,
+                showHint: hintManager.isHintActive,
+                onIncorrectAttempt: handleMiss,
+                onCorrectAttempt: {
+                    handleHit()
+                    stepProgress = min(stepProgress + 1, progressTotal)
+                },
+                onComplete: handleComplete
+            )
+        case .memoryMatch(let content):
+            MemoryMatchTaskView(
+                content: content,
+                showHint: hintManager.isHintActive,
+                onIncorrectAttempt: handleMiss,
+                onCorrectAttempt: {
+                    handleHit()
+                    stepProgress = min(stepProgress + 1, progressTotal)
                 },
                 onComplete: handleComplete
             )
@@ -442,6 +472,8 @@ struct ActivityRunnerView: View {
 
     private func maybeAutoReadPrompt() {
         guard autoReadPrompts else { return }
+        // Story Time speaks each page itself — avoid double TTS.
+        if task.activityType == .storyTime { return }
         let token = generation
         // Brief delay so the stage can settle before speaking.
         SafeAsync.after(0.35) {
@@ -514,5 +546,17 @@ struct ActivityRunnerView: View {
 #Preview("Sequence Order") {
     NavigationStack {
         ActivityRunnerView(task: .previewSequenceOrder)
+    }
+}
+
+#Preview("Story Time") {
+    NavigationStack {
+        ActivityRunnerView(task: .previewStoryTime)
+    }
+}
+
+#Preview("Memory Match") {
+    NavigationStack {
+        ActivityRunnerView(task: .previewMemoryMatch)
     }
 }

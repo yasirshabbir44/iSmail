@@ -65,6 +65,8 @@ enum LearningTheme {
         case .dragAndDrop: return accent
         case .tapAndSelect: return coral
         case .sequenceOrder: return Color(red: 0.42, green: 0.58, blue: 0.95)
+        case .storyTime: return Color(red: 0.55, green: 0.40, blue: 0.78)
+        case .memoryMatch: return Color(red: 0.98, green: 0.55, blue: 0.20)
         }
     }
 

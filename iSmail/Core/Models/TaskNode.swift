@@ -41,6 +41,8 @@ enum ActivityPayload: Hashable, Sendable {
     case dragAndDrop(DragAndDropContent)
     case tapAndSelect(TapAndSelectContent)
     case sequenceOrder(SequenceOrderContent)
+    case storyTime(StoryTimeContent)
+    case memoryMatch(MemoryMatchContent)
 }
 
 // MARK: - Drag & Drop
@@ -48,6 +50,16 @@ enum ActivityPayload: Hashable, Sendable {
 struct DragAndDropContent: Hashable, Sendable {
     var items: [DragItem]
     var zones: [DropZone]
+
+    /// Trims to `count` pairs while keeping items/zones matched.
+    func limited(to count: Int) -> DragAndDropContent {
+        let n = max(1, min(count, items.count, zones.count))
+        let keptKeys = Set(items.prefix(n).map(\.matchKey))
+        return DragAndDropContent(
+            items: Array(items.prefix(n)),
+            zones: zones.filter { keptKeys.contains($0.matchKey) }.prefix(n).map { $0 }
+        )
+    }
 }
 
 struct DragItem: Identifiable, Hashable, Sendable {
@@ -95,6 +107,16 @@ struct TapAndSelectContent: Hashable, Sendable {
     var choices: [SelectChoice]
     /// ID of the correct choice.
     var correctChoiceID: UUID
+
+    /// Keeps the correct answer and fills with distractors up to `count`.
+    func limited(to count: Int) -> TapAndSelectContent {
+        let n = max(2, count)
+        guard let correct = choices.first(where: { $0.id == correctChoiceID }) else { return self }
+        var pool = choices.filter { $0.id != correctChoiceID }
+        pool.shuffle()
+        let picked = Array(([correct] + pool).prefix(n)).shuffled()
+        return TapAndSelectContent(choices: picked, correctChoiceID: correct.id)
+    }
 }
 
 struct SelectChoice: Identifiable, Hashable, Sendable {
@@ -120,6 +142,22 @@ struct SequenceOrderContent: Hashable, Sendable {
     var items: [SequenceItem]
     /// Correct order by item IDs from first → last.
     var correctOrder: [UUID]
+
+    func limited(to count: Int) -> SequenceOrderContent {
+        let n = max(2, min(count, items.count))
+        let ordered = correctOrder.compactMap { id in items.first { $0.id == id } }
+        let kept = Array(ordered.prefix(n))
+        var shuffled = kept
+        shuffled.shuffle()
+        // Avoid accidentally starting already-correct for little kids.
+        if shuffled.map(\.id) == kept.map(\.id), kept.count > 1 {
+            shuffled.swapAt(0, kept.count - 1)
+        }
+        return SequenceOrderContent(
+            items: shuffled,
+            correctOrder: kept.map(\.id)
+        )
+    }
 }
 
 struct SequenceItem: Identifiable, Hashable, Sendable {
@@ -138,5 +176,70 @@ struct SequenceItem: Identifiable, Hashable, Sendable {
         self.label = label
         self.symbolName = symbolName
         self.stepNumber = stepNumber
+    }
+}
+
+// MARK: - Story Time
+
+struct StoryTimeContent: Hashable, Sendable {
+    var pages: [StoryPage]
+}
+
+struct StoryPage: Identifiable, Hashable, Sendable {
+    let id: UUID
+    var emoji: String
+    var symbolName: String
+    var text: String
+    /// Optional comprehension question on the last interactive beat.
+    var askLabel: String?
+    var askChoices: [SelectChoice]?
+    var correctChoiceID: UUID?
+
+    init(
+        id: UUID = UUID(),
+        emoji: String,
+        symbolName: String,
+        text: String,
+        askLabel: String? = nil,
+        askChoices: [SelectChoice]? = nil,
+        correctChoiceID: UUID? = nil
+    ) {
+        self.id = id
+        self.emoji = emoji
+        self.symbolName = symbolName
+        self.text = text
+        self.askLabel = askLabel
+        self.askChoices = askChoices
+        self.correctChoiceID = correctChoiceID
+    }
+
+    var hasQuestion: Bool {
+        askChoices != nil && correctChoiceID != nil
+    }
+}
+
+// MARK: - Memory Match
+
+struct MemoryMatchContent: Hashable, Sendable {
+    var pairs: [MemoryPair]
+
+    func limited(to pairCount: Int) -> MemoryMatchContent {
+        MemoryMatchContent(pairs: Array(pairs.prefix(max(2, pairCount))))
+    }
+}
+
+struct MemoryPair: Identifiable, Hashable, Sendable {
+    let id: UUID
+    var label: String
+    var symbolName: String
+
+    init(
+        id: UUID = UUID(),
+        label: String,
+        symbolName: String
+    ) {
+        self.id = id
+        self.label = label
+        self.symbolName = symbolName
     }
 }

@@ -289,6 +289,10 @@ private struct LessonPreviewSheet: View {
                 .multilineTextAlignment(.center)
                 .minimumScaleFactor(0.85)
 
+            Text(chapter.type.skillTag)
+                .font(.system(.subheadline, design: .rounded).weight(.heavy))
+                .foregroundStyle(tint)
+
             HStack(spacing: 12) {
                 metaChip(
                     icon: "clock.fill",

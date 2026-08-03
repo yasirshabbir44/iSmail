@@ -18,17 +18,17 @@ enum ChapterRepository: Sendable {
         ("Pick the Fruit", .tapAndSelect, 6),
         ("Morning Steps", .sequenceOrder, 7),
         ("Color Match", .dragAndDrop, 5),
-        ("Find the Shape", .tapAndSelect, 6),
+        ("Find the Star", .tapAndSelect, 6),
         ("Bedtime Order", .sequenceOrder, 7),
         ("Pet Pals", .dragAndDrop, 5),
         ("Snack Time", .tapAndSelect, 6),
         ("Get Ready", .sequenceOrder, 7),
-        ("Sound Safari", .dragAndDrop, 8),
-        ("Pick a Flower", .tapAndSelect, 6),
+        ("Brave Little Fox", .storyTime, 8),
+        ("Weather Match", .dragAndDrop, 6),
+        ("Feelings", .tapAndSelect, 6),
         ("Park Day Steps", .sequenceOrder, 7),
-        ("Toy Sort", .dragAndDrop, 5),
-        ("Guess the Fruit", .tapAndSelect, 6),
-        ("Morning Quest", .sequenceOrder, 8)
+        ("Memory Garden", .memoryMatch, 8),
+        ("Star Wish", .storyTime, 8)
     ]
 
     /// Generates `count` chapters starting at local midnight of `startDate`.
@@ -62,19 +62,9 @@ enum ChapterRepository: Sendable {
         }
     }
 
-    /// Maps a chapter to a runnable learning task (cycled sample payloads).
-    static func task(for chapter: ChapterNode) -> TaskNode {
-        let samples = TaskNode.chapter2Samples
-        let sample = samples.first { $0.activityType == chapter.type } ?? samples[0]
-
-        return TaskNode(
-            id: chapter.id,
-            title: chapter.title,
-            prompt: sample.prompt,
-            activityType: chapter.type,
-            payload: sample.payload,
-            rewardCoins: chapter.rewardCoins
-        )
+    /// Maps a chapter to a runnable learning task, tailored by age when provided.
+    static func task(for chapter: ChapterNode, ageYears: Int = 6) -> TaskNode {
+        CurriculumCatalog.task(for: chapter, ageYears: ageYears)
     }
 
     // MARK: - Deterministic IDs
