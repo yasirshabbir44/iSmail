@@ -233,15 +233,26 @@ private struct LessonPreviewSheet: View {
     let estimatedMinutes: Int
     var onStart: () -> Void
 
+    @Environment(\.dismiss) private var dismiss
+
     private let mapSpring = Animation.spring(response: 0.4, dampingFraction: 0.7)
     private var tint: Color { LearningTheme.activityTint(for: chapter.type) }
 
     var body: some View {
         VStack(spacing: 22) {
-            Capsule()
-                .fill(LearningTheme.slot)
-                .frame(width: 44, height: 5)
-                .padding(.top, 8)
+            HStack {
+                Spacer(minLength: 0)
+                Capsule()
+                    .fill(LearningTheme.slot)
+                    .frame(width: 44, height: 5)
+                Spacer(minLength: 0)
+            }
+            .overlay(alignment: .trailing) {
+                ScreenCloseButton(accessibilityLabel: "Close lesson preview") {
+                    dismiss()
+                }
+            }
+            .padding(.top, 8)
 
             ZStack {
                 if chapter.isChestReward {

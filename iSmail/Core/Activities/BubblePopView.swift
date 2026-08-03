@@ -77,12 +77,18 @@ struct BubblePopView: View {
 
     private var topChrome: some View {
         VStack(spacing: 10) {
-            HStack {
+            HStack(spacing: 12) {
+                ScreenBackButton(accessibilityLabel: "Back to map") {
+                    returnToMap()
+                }
+
                 Text("Bubble Pop!")
                     .font(.system(.title2, design: .rounded).weight(.heavy))
                     .foregroundStyle(LearningTheme.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
 
-                Spacer()
+                Spacer(minLength: 0)
 
                 HStack(spacing: 6) {
                     Text("🪙")
@@ -192,6 +198,13 @@ struct BubblePopView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 18) {
+                HStack {
+                    Spacer(minLength: 0)
+                    ScreenCloseButton(accessibilityLabel: "Close and return to map") {
+                        returnToMap()
+                    }
+                }
+
                 Text("Great Job!")
                     .font(.system(.largeTitle, design: .rounded).weight(.heavy))
                     .foregroundStyle(LearningTheme.ink)

@@ -23,6 +23,13 @@ struct DailySpinSheet: View {
 
     var body: some View {
         VStack(spacing: 20) {
+            HStack {
+                Spacer(minLength: 0)
+                ScreenCloseButton(accessibilityLabel: "Close daily spin") {
+                    skipOrFinish()
+                }
+            }
+
             Text("Daily Spin!")
                 .font(.system(.largeTitle, design: .rounded).weight(.heavy))
                 .foregroundStyle(LearningTheme.ink)
@@ -149,6 +156,15 @@ struct DailySpinSheet: View {
     private func finish() {
         onClaim(awardedCoins)
         onDismiss()
+    }
+
+    private func skipOrFinish() {
+        guard !isSpinning else { return }
+        if hasSpun {
+            finish()
+        } else {
+            onDismiss()
+        }
     }
 }
 

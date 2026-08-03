@@ -109,24 +109,9 @@ struct CreateProfileView: View {
 
     private var closeBar: some View {
         HStack {
-            Button {
+            ScreenCloseButton(size: 48) {
                 dismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(LearningTheme.ink)
-                    .frame(width: 48, height: 48)
-                    .background {
-                        Circle()
-                            .fill(LearningTheme.surface.opacity(0.95))
-                            .overlay {
-                                Circle()
-                                    .strokeBorder(LearningTheme.border.opacity(0.25), lineWidth: 2)
-                            }
-                    }
             }
-            .buttonStyle(KidBounceButtonStyle())
-            .accessibilityLabel("Close")
 
             Spacer()
         }
