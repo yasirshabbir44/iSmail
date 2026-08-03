@@ -2,17 +2,18 @@
 //  AdventureMapView.swift
 //  iSmail
 //
-//  ADHD-friendly winding island adventure path for today's lessons.
+//  ADHD-friendly winding island adventure path for daily chapters.
 //
 
 import SwiftUI
 
 struct AdventureMapView: View {
-    let tasks: [TaskNode]
-    let completedTaskIDs: Set<UUID>
-    var onStartLesson: (TaskNode) -> Void
+    let chapters: [ChapterNode]
+    let progress: DailyProgressManager
+    let avatarId: String
+    var onStartLesson: (ChapterNode) -> Void
 
-    @State private var previewTask: TaskNode?
+    @State private var previewChapter: ChapterNode?
     @State private var successTrigger = 0
 
     private let mapSpring = Animation.spring(response: 0.4, dampingFraction: 0.7)
@@ -23,12 +24,12 @@ struct AdventureMapView: View {
         GeometryReader { geo in
             let width = geo.size.width
             let positions = Self.nodePositions(
-                count: tasks.count,
+                count: chapters.count,
                 width: width,
                 nodeSize: nodeSize
             )
             let mapHeight = Self.mapContentHeight(
-                count: tasks.count,
+                count: chapters.count,
                 nodeSize: nodeSize
             )
 
@@ -57,39 +58,44 @@ struct AdventureMapView: View {
                         )
                     )
 
-                ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
+                ForEach(Array(chapters.enumerated()), id: \.element.id) { index, chapter in
                     let point = positions[index]
-                    let state = nodeState(for: index, task: task)
+                    let chapterStatus = progress.status(for: chapter)
+                    let state = progress.mapState(for: chapter)
 
                     Button {
-                        handleTap(task: task, state: state)
+                        handleTap(chapter: chapter)
                     } label: {
                         MapNodeView(
-                            step: index + 1,
-                            symbolName: task.activityType.systemImage,
-                            tint: LearningTheme.activityTint(for: task.activityType),
+                            step: chapter.dayNumber,
+                            symbolName: chapter.type.systemImage,
+                            tint: LearningTheme.activityTint(for: chapter.type),
                             state: state,
-                            size: nodeSize
+                            size: nodeSize,
+                            isChestReward: chapter.isChestReward,
+                            avatarId: avatarId,
+                            countdownLabel: progress.countdownLabel(for: chapter),
+                            isTodaysNode: chapterStatus == .activeToday
                         )
                     }
                     .buttonStyle(KidBounceButtonStyle())
                     .disabled(state == .locked)
                     .position(point)
-                    .accessibilityHint(accessibilityHint(for: state))
+                    .accessibilityHint(accessibilityHint(for: chapterStatus))
                 }
             }
             .frame(width: width, height: mapHeight)
             .frame(maxWidth: .infinity)
         }
-        .frame(height: Self.mapContentHeight(count: tasks.count, nodeSize: nodeSize))
-        .animation(mapSpring, value: completedTaskIDs)
-        .sheet(item: $previewTask) { task in
+        .frame(height: Self.mapContentHeight(count: chapters.count, nodeSize: nodeSize))
+        .animation(mapSpring, value: progress.completedCount)
+        .sheet(item: $previewChapter) { chapter in
             LessonPreviewSheet(
-                task: task,
+                chapter: chapter,
                 estimatedMinutes: estimatedMinutes,
                 onStart: {
-                    let selected = task
-                    previewTask = nil
+                    let selected = chapter
+                    previewChapter = nil
                     onStartLesson(selected)
                 }
             )
@@ -100,33 +106,23 @@ struct AdventureMapView: View {
         .sensoryFeedback(.success, trigger: successTrigger)
     }
 
-    // MARK: - State
+    // MARK: - Interaction
 
-    private func nodeState(for index: Int, task: TaskNode) -> MapNodeState {
-        if completedTaskIDs.contains(task.id) {
-            return .completed
-        }
-        let firstIncomplete = tasks.firstIndex { !completedTaskIDs.contains($0.id) }
-        if firstIncomplete == index {
-            return .active
-        }
-        return .locked
-    }
-
-    private func handleTap(task: TaskNode, state: MapNodeState) {
-        guard state == .active || state == .completed else { return }
+    private func handleTap(chapter: ChapterNode) {
+        guard progress.isPlayable(chapter) else { return }
         AudioHapticManager.shared.playSuccess()
         successTrigger &+= 1
         withAnimation(mapSpring) {
-            previewTask = task
+            previewChapter = chapter
         }
     }
 
-    private func accessibilityHint(for state: MapNodeState) -> String {
-        switch state {
+    private func accessibilityHint(for status: ChapterNodeStatus) -> String {
+        switch status {
         case .completed: return "Opens lesson preview"
-        case .active: return "Opens lesson preview to start"
-        case .locked: return "Finish earlier lessons first"
+        case .activeToday: return "Today's chapter — opens lesson preview"
+        case .available: return "Opens lesson preview to start"
+        case .lockedFuture: return "Unlocks on a future day"
         }
     }
 
@@ -145,8 +141,9 @@ struct AdventureMapView: View {
         let leftX = inset + usable * 0.18
         let rightX = inset + usable * 0.82
         let centerX = width * 0.5
-        let topPad: CGFloat = nodeSize * 0.95
-        let stepY: CGFloat = nodeSize * 1.55
+        // Extra top room for the floating avatar above today's node.
+        let topPad: CGFloat = nodeSize * 1.25
+        let stepY: CGFloat = nodeSize * 1.75
 
         return (0..<count).map { index in
             let y = topPad + CGFloat(index) * stepY
@@ -154,7 +151,6 @@ struct AdventureMapView: View {
             if count == 1 {
                 x = centerX
             } else {
-                // Zig-zag: left, right, left…
                 x = index.isMultiple(of: 2) ? leftX : rightX
             }
             return CGPoint(x: x, y: y)
@@ -163,9 +159,10 @@ struct AdventureMapView: View {
 
     static func mapContentHeight(count: Int, nodeSize: CGFloat) -> CGFloat {
         guard count > 0 else { return nodeSize * 2 }
-        let topPad = nodeSize * 0.95
-        let stepY = nodeSize * 1.55
-        let bottomPad = nodeSize * 1.15
+        let topPad = nodeSize * 1.25
+        let stepY = nodeSize * 1.75
+        // Extra bottom room for locked countdown badges.
+        let bottomPad = nodeSize * 1.45
         return topPad + CGFloat(count - 1) * stepY + bottomPad
     }
 }
@@ -215,7 +212,6 @@ private struct IslandPathDecoration: View {
                 .frame(width: width * 0.7, height: height * 0.2)
                 .position(x: width * 0.4, y: height * 0.82)
 
-            // Soft “rocks” / path markers
             ForEach(0..<4, id: \.self) { i in
                 Circle()
                     .fill(Color.white.opacity(0.35))
@@ -233,12 +229,12 @@ private struct IslandPathDecoration: View {
 // MARK: - Lesson preview sheet
 
 private struct LessonPreviewSheet: View {
-    let task: TaskNode
+    let chapter: ChapterNode
     let estimatedMinutes: Int
     var onStart: () -> Void
 
     private let mapSpring = Animation.spring(response: 0.4, dampingFraction: 0.7)
-    private var tint: Color { LearningTheme.activityTint(for: task.activityType) }
+    private var tint: Color { LearningTheme.activityTint(for: chapter.type) }
 
     var body: some View {
         VStack(spacing: 22) {
@@ -248,16 +244,35 @@ private struct LessonPreviewSheet: View {
                 .padding(.top, 8)
 
             ZStack {
-                Circle()
-                    .fill(LearningTheme.activitySoft(for: task.activityType))
-                    .frame(width: 96, height: 96)
+                if chapter.isChestReward {
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.95, green: 0.62, blue: 0.18),
+                                    LearningTheme.sunshine
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 96, height: 96)
 
-                Image(systemName: task.activityType.systemImage)
-                    .font(.system(size: 40, weight: .bold))
-                    .foregroundStyle(tint)
+                    Image(systemName: "treasurechest.fill")
+                        .font(.system(size: 40, weight: .bold))
+                        .foregroundStyle(.white)
+                } else {
+                    Circle()
+                        .fill(LearningTheme.activitySoft(for: chapter.type))
+                        .frame(width: 96, height: 96)
+
+                    Image(systemName: chapter.type.systemImage)
+                        .font(.system(size: 40, weight: .bold))
+                        .foregroundStyle(tint)
+                }
             }
 
-            Text(task.title)
+            Text(chapter.title)
                 .font(.system(.title, design: .rounded).weight(.heavy))
                 .foregroundStyle(LearningTheme.ink)
                 .multilineTextAlignment(.center)
@@ -271,7 +286,7 @@ private struct LessonPreviewSheet: View {
                 )
                 metaChip(
                     icon: "star.fill",
-                    label: "+\(task.rewardCoins) Coins",
+                    label: "+\(chapter.rewardCoins) Coins",
                     color: LearningTheme.sunshine
                 )
             }
@@ -287,7 +302,7 @@ private struct LessonPreviewSheet: View {
             }
             .buttonStyle(KidBounceButtonStyle())
             .padding(.top, 4)
-            .accessibilityLabel("Start \(task.title)")
+            .accessibilityLabel("Start \(chapter.title)")
 
             Spacer(minLength: 0)
         }
@@ -305,7 +320,7 @@ private struct LessonPreviewSheet: View {
             )
             .ignoresSafeArea()
         )
-        .animation(mapSpring, value: task.id)
+        .animation(mapSpring, value: chapter.id)
     }
 
     private func metaChip(icon: String, label: String, color: Color) -> some View {
@@ -331,10 +346,12 @@ private struct LessonPreviewSheet: View {
 }
 
 #Preview {
-    ScrollView {
+    let manager = DailyProgressManager(profileID: UUID())
+    return ScrollView {
         AdventureMapView(
-            tasks: TaskNode.chapter2Samples,
-            completedTaskIDs: [TaskNode.chapter2Samples[0].id],
+            chapters: manager.chapters,
+            progress: manager,
+            avatarId: "avatar_lion",
             onStartLesson: { _ in }
         )
         .padding(.horizontal, 16)
