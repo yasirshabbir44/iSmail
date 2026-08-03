@@ -155,21 +155,9 @@ struct ActivityRunnerView: View {
 
     private var topChrome: some View {
         HStack(spacing: 12) {
-            Button {
+            ScreenBackButton {
                 dismiss()
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 18, weight: .heavy))
-                    .foregroundStyle(LearningTheme.ink)
-                    .frame(width: LearningTheme.minTouchTarget, height: LearningTheme.minTouchTarget)
-                    .background {
-                        Circle()
-                            .fill(LearningTheme.surface.opacity(0.95))
-                            .shadow(color: .black.opacity(0.06), radius: 6, y: 2)
-                    }
             }
-            .buttonStyle(KidBounceButtonStyle())
-            .accessibilityLabel("Back")
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(task.activityType.displayName)

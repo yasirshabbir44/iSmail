@@ -12,6 +12,7 @@ struct MascotHeaderView: View {
     let avatarId: String
     let streakDays: Int
     let coinBalance: Int
+    var onBack: (() -> Void)?
     var onAvatarTap: (() -> Void)?
 
     @State private var streakPulse = false
@@ -21,6 +22,10 @@ struct MascotHeaderView: View {
 
     var body: some View {
         HStack(spacing: 10) {
+            if let onBack {
+                ScreenBackButton(accessibilityLabel: "Back to profiles", action: onBack)
+            }
+
             avatarChip
             Spacer(minLength: 4)
             streakChip
@@ -157,6 +162,7 @@ struct MascotHeaderView: View {
         avatarId: "avatar_lion",
         streakDays: 3,
         coinBalance: 120,
+        onBack: {},
         onAvatarTap: {}
     )
     .padding()

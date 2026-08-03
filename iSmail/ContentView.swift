@@ -45,6 +45,11 @@ struct ContentView: View {
                             avatarId: profile.avatarId,
                             streakDays: streakDays,
                             coinBalance: profile.totalCoins,
+                            onBack: {
+                                withAnimation(LearningTheme.forgivingSpring) {
+                                    session.clearActiveProfile()
+                                }
+                            },
                             onAvatarTap: {
                                 withAnimation(LearningTheme.forgivingSpring) {
                                     session.clearActiveProfile()
@@ -85,9 +90,36 @@ struct ContentView: View {
                 .navigationDestination(item: $bonusDestination) { destination in
                     switch destination {
                     case .petShop:
-                        PetShopView(profile: profile)
+                        PetShopView(
+                            profile: profile,
+                            onClose: {
+                                bonusDestination = nil
+                            }
+                        )
                     case .bubblePop:
                         BubblePopView(
+                            onRoundFinished: { coins in
+                                withAnimation(LearningTheme.successBump) {
+                                    profile.totalCoins = min(profile.totalCoins + max(0, coins), 9_999)
+                                }
+                            },
+                            onReturnToMap: {
+                                bonusDestination = nil
+                            }
+                        )
+                    case .patternConstructor:
+                        PatternConstructorView(
+                            onRoundFinished: { coins in
+                                withAnimation(LearningTheme.successBump) {
+                                    profile.totalCoins = min(profile.totalCoins + max(0, coins), 9_999)
+                                }
+                            },
+                            onReturnToMap: {
+                                bonusDestination = nil
+                            }
+                        )
+                    case .focusPilot:
+                        FocusPilotView(
                             onRoundFinished: { coins in
                                 withAnimation(LearningTheme.successBump) {
                                     profile.totalCoins = min(profile.totalCoins + max(0, coins), 9_999)
@@ -106,7 +138,11 @@ struct ContentView: View {
                 ZStack {
                     Color.black.opacity(0.4)
                         .ignoresSafeArea()
-                        .onTapGesture { /* require claim via button */ }
+                        .onTapGesture {
+                            withAnimation(LearningTheme.forgivingSpring) {
+                                showDailySpin = false
+                            }
+                        }
 
                     DailySpinSheet(
                         onClaim: { coins in
@@ -179,7 +215,11 @@ struct ContentView: View {
     // MARK: - Bonus actions
 
     private func bonusActions(narrow: Bool) -> some View {
-        HStack(spacing: narrow ? 10 : 14) {
+        let spacing = narrow ? 10.0 : 14.0
+        return LazyVGrid(
+            columns: [GridItem(.flexible(), spacing: spacing), GridItem(.flexible(), spacing: spacing)],
+            spacing: spacing
+        ) {
             bonusButton(
                 title: "Pet Shop",
                 symbol: "tshirt.fill",
@@ -194,6 +234,22 @@ struct ContentView: View {
                 tint: LearningTheme.accent
             ) {
                 bonusDestination = .bubblePop
+            }
+
+            bonusButton(
+                title: "Patterns",
+                symbol: "square.grid.3x3.fill",
+                tint: Color(red: 0.42, green: 0.58, blue: 0.95)
+            ) {
+                bonusDestination = .patternConstructor
+            }
+
+            bonusButton(
+                title: "Focus Pilot",
+                symbol: "paperplane.fill",
+                tint: LearningTheme.sunshine
+            ) {
+                bonusDestination = .focusPilot
             }
         }
     }
@@ -281,6 +337,8 @@ struct ContentView: View {
 private enum BonusDestination: String, Identifiable, Hashable {
     case petShop
     case bubblePop
+    case patternConstructor
+    case focusPilot
 
     var id: String { rawValue }
 }

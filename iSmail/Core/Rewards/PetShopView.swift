@@ -61,24 +61,9 @@ struct PetShopView: View {
 
     private var topBar: some View {
         HStack(spacing: 12) {
-            Button {
+            ScreenBackButton(accessibilityLabel: "Back to map") {
                 close()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 18, weight: .heavy))
-                    .foregroundStyle(LearningTheme.ink)
-                    .frame(width: 48, height: 48)
-                    .background {
-                        Circle()
-                            .fill(LearningTheme.surface.opacity(0.94))
-                            .overlay {
-                                Circle()
-                                    .strokeBorder(Color.white.opacity(0.8), lineWidth: 2)
-                            }
-                    }
             }
-            .buttonStyle(KidBounceButtonStyle())
-            .accessibilityLabel("Close pet shop")
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Pet Closet")

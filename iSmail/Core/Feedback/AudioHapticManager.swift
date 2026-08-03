@@ -94,6 +94,24 @@ final class AudioHapticManager {
         )
     }
 
+    /// Distinct pad tone for Pattern Constructor tiles (0…8).
+    func playTone(forTile index: Int) {
+        let tones: [Double] = [
+            261.63, 293.66, 329.63,
+            349.23, 392.00, 440.00,
+            493.88, 523.25, 587.33
+        ]
+        let clamped = max(0, min(index, tones.count - 1))
+        let freq = tones[clamped]
+        playChime(
+            notes: [
+                (frequency: freq, duration: 0.16, volume: 0.26),
+                (frequency: freq * 2, duration: 0.08, volume: 0.10)
+            ],
+            wave: .sparkle
+        )
+    }
+
     // MARK: - Engine
 
     private func armEngineIfNeeded() -> Bool {
