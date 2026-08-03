@@ -1,17 +1,24 @@
 # iSmail
 
-A SwiftUI learning app for kids — a playful home hub with short interactive activities, gentle coaching, and coin rewards.
+A SwiftUI learning app for kids — short lessons on a winding adventure map, with themed worlds, gentle coaching, and coin rewards.
 
 ## Features
 
-- **Play world home** — brand-first kids hub with today’s learning path
+- **Child profiles** — create, switch, edit, and delete profiles with avatars and age-based difficulty
+- **Adventure map** — 15-day winding path; one new chapter unlocks each calendar day
+- **Themed worlds** — chapters grouped into Animal Friends, Daily Life, Feelings, Nature, and Story Stars
+- **Multi-step chapters** — each chapter is warm-up → play → wrap-up (3 short activities)
 - **Activity types**
   - **Match** — drag and drop
   - **Choose** — tap and select
   - **Order** — sequence sorting
-- **Buddy coach** — on-screen guidance and hints
-- **Feedback** — audio, haptics, and reward bursts on success
-- **Coins** — simple token balance for completed tasks
+  - **Story** — listen-and-respond story time
+  - **Memory** — flip-card working memory
+- **Age-aware lessons** — little / explorer / adventurer bands tailor choice counts and complexity
+- **Buddy coach** — on-screen guidance, hints, speech, and frustration-aware feedback
+- **Feel-good zones** — Calm Corner, Pet Shop wardrobe, sticker book, once-a-day reward spin
+- **Quick play** — Bubble Pop, Patterns, Focus Pilot, Rhythm Tap, and Memory bonus games
+- **Rewards** — coins, chest milestones, stickers, and celebration bursts
 
 ## Requirements
 
@@ -34,14 +41,16 @@ A SwiftUI learning app for kids — a playful home hub with short interactive ac
 
 ```
 iSmail/
-├── ContentView.swift          # Kids home hub
-├── iSmailApp.swift            # App entry
+├── ContentView.swift              # Adventure home hub
+├── iSmailApp.swift                # App entry + SwiftData
 └── Core/
-    ├── Activities/            # Task runners (match, choose, order)
-    ├── DesignSystem/          # Theme, buddy coach, hint aura
-    ├── Feedback/              # Audio, haptics, hints, speech
-    ├── Models/                # TaskNode, ActivityType, payloads
-    └── Rewards/               # Completion celebrations
+    ├── Activities/                # Chapter runner, task views, bonus games
+    ├── Adventure/                 # Map, chapters, daily unlocks, daily spin
+    ├── DesignSystem/              # Theme, buddy coach, screen chrome
+    ├── Feedback/                  # Audio, haptics, hints, speech, idle anchors
+    ├── Models/                    # Profiles, curriculum, worlds, tasks
+    ├── Profiles/                  # Profile selection, create/edit, session
+    └── Rewards/                   # Stickers, pet shop, celebration bursts
 ```
 
 ## License
