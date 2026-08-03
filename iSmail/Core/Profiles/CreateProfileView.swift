@@ -2,17 +2,25 @@
 //  CreateProfileView.swift
 //  iSmail
 //
-//  Parent-facing child profile creation — avatar, nickname, birth date.
+//  Parent-facing child profile create / edit — avatar, nickname, birth date.
 //
 
 import SwiftData
 import SwiftUI
 
 struct CreateProfileView: View {
+    enum Mode {
+        case create
+        case edit(ChildProfile)
+    }
+
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppSession.self) private var session
 
+    let mode: Mode
     var onCreated: ((ChildProfile) -> Void)?
+    var onDeleted: (() -> Void)?
 
     @State private var selectedAvatarId: String?
     @State private var nickname = ""
@@ -22,6 +30,28 @@ struct CreateProfileView: View {
         to: .now
     ) ?? .now
     @State private var didSavePulse = false
+    @State private var showDeleteConfirm = false
+    @State private var didLoadExisting = false
+
+    init(
+        mode: Mode = .create,
+        onCreated: ((ChildProfile) -> Void)? = nil,
+        onDeleted: (() -> Void)? = nil
+    ) {
+        self.mode = mode
+        self.onCreated = onCreated
+        self.onDeleted = onDeleted
+    }
+
+    private var isEditing: Bool {
+        if case .edit = mode { return true }
+        return false
+    }
+
+    private var editingProfile: ChildProfile? {
+        if case .edit(let profile) = mode { return profile }
+        return nil
+    }
 
     private var trimmedNickname: String {
         ChildProfile.clampedNickname(nickname)
@@ -43,6 +73,10 @@ struct CreateProfileView: View {
                 nicknameSection
                 birthDateSection
                 saveButton
+
+                if isEditing {
+                    deleteButton
+                }
             }
             .padding(.horizontal, 20)
             .padding(.top, 12)
@@ -53,6 +87,21 @@ struct CreateProfileView: View {
         .toolbar(.hidden, for: .navigationBar)
         .safeAreaInset(edge: .top, spacing: 0) {
             closeBar
+        }
+        .onAppear {
+            loadExistingIfNeeded()
+        }
+        .confirmationDialog(
+            deleteDialogTitle,
+            isPresented: $showDeleteConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Profile", role: .destructive) {
+                deleteProfile()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Stars and progress for this profile will be removed. This can't be undone.")
         }
     }
 
@@ -87,15 +136,19 @@ struct CreateProfileView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("New play profile")
+            Text(isEditing ? "Edit play profile" : "New play profile")
                 .font(.system(size: 30, weight: .heavy, design: .rounded))
                 .foregroundStyle(LearningTheme.ink)
                 .accessibilityAddTraits(.isHeader)
 
-            Text("Parents set this up — kids pick who is playing next.")
-                .font(.system(.body, design: .rounded).weight(.semibold))
-                .foregroundStyle(LearningTheme.mutedInk)
-                .fixedSize(horizontal: false, vertical: true)
+            Text(
+                isEditing
+                    ? "Update the avatar, nickname, or birth date anytime."
+                    : "Parents set this up — kids pick who is playing next."
+            )
+            .font(.system(.body, design: .rounded).weight(.semibold))
+            .foregroundStyle(LearningTheme.mutedInk)
+            .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -205,13 +258,13 @@ struct CreateProfileView: View {
         }
     }
 
-    // MARK: - Save
+    // MARK: - Save / Delete
 
     private var saveButton: some View {
         Button {
             saveProfile()
         } label: {
-            Text("Save profile")
+            Text(isEditing ? "Save changes" : "Save profile")
                 .font(.system(.title2, design: .rounded).weight(.heavy))
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
@@ -224,7 +277,40 @@ struct CreateProfileView: View {
         }
         .buttonStyle(KidBounceButtonStyle())
         .disabled(!canSave)
-        .accessibilityHint(canSave ? "Saves this child profile" : "Choose an avatar and enter a nickname first")
+        .accessibilityHint(
+            canSave
+                ? (isEditing ? "Saves changes to this profile" : "Saves this child profile")
+                : "Choose an avatar and enter a nickname first"
+        )
+    }
+
+    private var deleteButton: some View {
+        Button(role: .destructive) {
+            showDeleteConfirm = true
+        } label: {
+            Text("Delete profile")
+                .font(.system(.headline, design: .rounded).weight(.heavy))
+                .foregroundStyle(LearningTheme.coral)
+                .frame(maxWidth: .infinity)
+                .frame(height: 56)
+                .background {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(LearningTheme.coralSoft)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .strokeBorder(LearningTheme.coral.opacity(0.45), lineWidth: 2)
+                        }
+                }
+        }
+        .buttonStyle(KidBounceButtonStyle())
+        .accessibilityHint("Removes this child profile and their progress")
+    }
+
+    private var deleteDialogTitle: String {
+        if let name = editingProfile?.nickname, !name.isEmpty {
+            return "Delete \(name)?"
+        }
+        return "Delete this profile?"
     }
 
     private func sectionTitle(_ title: String) -> some View {
@@ -233,28 +319,75 @@ struct CreateProfileView: View {
             .foregroundStyle(LearningTheme.ink)
     }
 
+    private func loadExistingIfNeeded() {
+        guard !didLoadExisting, let profile = editingProfile else { return }
+        didLoadExisting = true
+        selectedAvatarId = profile.avatarId
+        nickname = profile.nickname
+        dateOfBirth = profile.dateOfBirth
+    }
+
     private func saveProfile() {
         guard let avatarId = selectedAvatarId, canSave else { return }
 
-        let profile = ChildProfile(
-            nickname: trimmedNickname,
-            dateOfBirth: dateOfBirth,
-            avatarId: avatarId
-        )
-        modelContext.insert(profile)
+        if let profile = editingProfile {
+            profile.nickname = trimmedNickname
+            profile.dateOfBirth = dateOfBirth
+            profile.avatarId = avatarId
+        } else {
+            let profile = ChildProfile(
+                nickname: trimmedNickname,
+                dateOfBirth: dateOfBirth,
+                avatarId: avatarId
+            )
+            modelContext.insert(profile)
+            onCreated?(profile)
+        }
 
         withAnimation(LearningTheme.successBump) {
             didSavePulse = true
         }
         AudioHapticManager.shared.playSuccess()
-        onCreated?(profile)
+        dismiss()
+    }
+
+    private func deleteProfile() {
+        guard let profile = editingProfile else { return }
+
+        if session.activeProfileID == profile.id {
+            session.clearActiveProfile()
+        }
+        ChildProfile.clearLocalProgress(for: profile.id)
+        modelContext.delete(profile)
+        onDeleted?()
         dismiss()
     }
 }
 
-#Preview {
+#Preview("Create") {
     NavigationStack {
         CreateProfileView()
     }
+    .environment(AppSession())
     .modelContainer(for: ChildProfile.self, inMemory: true)
+}
+
+#Preview("Edit") {
+    let container = try! ModelContainer(
+        for: ChildProfile.self,
+        configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+    )
+    let profile = ChildProfile(
+        nickname: "Maya",
+        dateOfBirth: .now.addingTimeInterval(-5 * 365 * 24 * 3600),
+        avatarId: "avatar_fox",
+        totalCoins: 42
+    )
+    container.mainContext.insert(profile)
+
+    return NavigationStack {
+        CreateProfileView(mode: .edit(profile))
+    }
+    .environment(AppSession())
+    .modelContainer(container)
 }
