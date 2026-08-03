@@ -48,12 +48,13 @@ final class ChildProfile {
     }
 
     /// Removes per-profile UserDefaults progress so deleted profiles leave no orphans.
-    static func clearLocalProgress(for profileID: UUID) {
+    @MainActor static func clearLocalProgress(for profileID: UUID) {
         let defaults = UserDefaults.standard
         let id = profileID.uuidString
         defaults.removeObject(forKey: "adventure.streak.\(id)")
         defaults.removeObject(forKey: "adventure.streakDay.\(id)")
         PetWardrobeStore.clear(for: profileID, defaults: defaults)
+        StickerBookStore.clear(for: profileID, defaults: defaults)
     }
 }
 

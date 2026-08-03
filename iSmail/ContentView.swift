@@ -17,10 +17,16 @@ struct ContentView: View {
     @State private var streakDays: Int = 3
     @State private var showDailySpin = false
     @State private var bonusDestination: BonusDestination?
+    @State private var newlyUnlockedSticker: StickerBadge?
+    @State private var stickerStore: StickerBookStore
 
     private let mapSpring = Animation.spring(response: 0.4, dampingFraction: 0.7)
 
     private var completedCount: Int { progress.completedCount }
+
+    private var ageBand: AgeBand {
+        AgeBand.from(ageYears: profile.ageInYears)
+    }
 
     private var streakStorageKey: String {
         "adventure.streak.\(profile.id.uuidString)"
@@ -30,6 +36,9 @@ struct ContentView: View {
         self.profile = profile
         _progress = State(
             initialValue: DailyProgressManager(profileID: profile.id)
+        )
+        _stickerStore = State(
+            initialValue: StickerBookStore(profileID: profile.id)
         )
     }
 
@@ -45,11 +54,6 @@ struct ContentView: View {
                             avatarId: profile.avatarId,
                             streakDays: streakDays,
                             coinBalance: profile.totalCoins,
-                            onBack: {
-                                withAnimation(LearningTheme.forgivingSpring) {
-                                    session.clearActiveProfile()
-                                }
-                            },
                             onAvatarTap: {
                                 withAnimation(LearningTheme.forgivingSpring) {
                                     session.clearActiveProfile()
@@ -59,14 +63,17 @@ struct ContentView: View {
 
                         pathIntro(narrow: isNarrow)
 
-                        bonusActions(narrow: isNarrow)
+                        playZones(narrow: isNarrow)
 
                         AdventureMapView(
                             chapters: progress.chapters,
                             progress: progress,
                             avatarId: profile.avatarId
                         ) { chapter in
-                            selectedTask = ChapterRepository.task(for: chapter)
+                            selectedTask = ChapterRepository.task(
+                                for: chapter,
+                                ageYears: profile.ageInYears
+                            )
                         }
                     }
                     .padding(.horizontal, isNarrow ? 16 : 20)
@@ -85,81 +92,20 @@ struct ContentView: View {
                             progress.markCompleted(id: task.id)
                         }
                         bumpStreakIfNeeded()
+                        checkStickers()
                     }
                 }
                 .navigationDestination(item: $bonusDestination) { destination in
-                    switch destination {
-                    case .petShop:
-                        PetShopView(
-                            profile: profile,
-                            onClose: {
-                                bonusDestination = nil
-                            }
-                        )
-                    case .bubblePop:
-                        BubblePopView(
-                            onRoundFinished: { coins in
-                                withAnimation(LearningTheme.successBump) {
-                                    profile.totalCoins = min(profile.totalCoins + max(0, coins), 9_999)
-                                }
-                            },
-                            onReturnToMap: {
-                                bonusDestination = nil
-                            }
-                        )
-                    case .patternConstructor:
-                        PatternConstructorView(
-                            onRoundFinished: { coins in
-                                withAnimation(LearningTheme.successBump) {
-                                    profile.totalCoins = min(profile.totalCoins + max(0, coins), 9_999)
-                                }
-                            },
-                            onReturnToMap: {
-                                bonusDestination = nil
-                            }
-                        )
-                    case .focusPilot:
-                        FocusPilotView(
-                            onRoundFinished: { coins in
-                                withAnimation(LearningTheme.successBump) {
-                                    profile.totalCoins = min(profile.totalCoins + max(0, coins), 9_999)
-                                }
-                            },
-                            onReturnToMap: {
-                                bonusDestination = nil
-                            }
-                        )
-                    }
+                    bonusDestinationView(destination)
                 }
             }
         }
         .overlay {
             if showDailySpin {
-                ZStack {
-                    Color.black.opacity(0.4)
-                        .ignoresSafeArea()
-                        .onTapGesture {
-                            withAnimation(LearningTheme.forgivingSpring) {
-                                showDailySpin = false
-                            }
-                        }
-
-                    DailySpinSheet(
-                        onClaim: { coins in
-                            let awarded = progress.claimDailySpin(rewardCoins: coins)
-                            withAnimation(LearningTheme.successBump) {
-                                profile.totalCoins = min(profile.totalCoins + awarded, 9_999)
-                            }
-                        },
-                        onDismiss: {
-                            withAnimation(LearningTheme.forgivingSpring) {
-                                showDailySpin = false
-                            }
-                        }
-                    )
-                    .transition(.scale(scale: 0.86).combined(with: .opacity))
-                }
-                .animation(LearningTheme.forgivingSpring, value: showDailySpin)
+                dailySpinOverlay
+            }
+            if let sticker = newlyUnlockedSticker {
+                stickerUnlockOverlay(sticker)
             }
         }
         .onAppear {
@@ -168,6 +114,7 @@ struct ContentView: View {
                 streakDays = stored
             }
             progress.refreshSpinClaimIfNeeded()
+            stickerStore.sync(completedCount: completedCount)
             if !progress.hasClaimedDailySpin {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
                     withAnimation(LearningTheme.forgivingSpring) {
@@ -182,9 +129,24 @@ struct ContentView: View {
 
     private func pathIntro(narrow: Bool) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Today's adventure")
-                .font(.system(.title2, design: .rounded).weight(.heavy))
-                .foregroundStyle(LearningTheme.ink)
+            HStack(alignment: .firstTextBaseline) {
+                Text("Today's adventure")
+                    .font(.system(.title2, design: .rounded).weight(.heavy))
+                    .foregroundStyle(LearningTheme.ink)
+
+                Spacer(minLength: 8)
+
+                Text(ageBand.friendlyLabel)
+                    .font(.system(.caption, design: .rounded).weight(.heavy))
+                    .foregroundStyle(LearningTheme.accent)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background {
+                        Capsule(style: .continuous)
+                            .fill(LearningTheme.accentSoft)
+                    }
+                    .accessibilityLabel("Difficulty \(ageBand.friendlyLabel)")
+            }
 
             Text(pathSubtitle)
                 .font(.system(.subheadline, design: .rounded).weight(.semibold))
@@ -212,45 +174,65 @@ struct ContentView: View {
         .animation(mapSpring, value: completedCount)
     }
 
-    // MARK: - Bonus actions
+    // MARK: - Play zones
 
-    private func bonusActions(narrow: Bool) -> some View {
-        let spacing = narrow ? 10.0 : 14.0
-        return LazyVGrid(
-            columns: [GridItem(.flexible(), spacing: spacing), GridItem(.flexible(), spacing: spacing)],
-            spacing: spacing
-        ) {
-            bonusButton(
-                title: "Pet Shop",
-                symbol: "tshirt.fill",
-                tint: LearningTheme.coral
+    private func playZones(narrow: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionTitle("Feel good", subtitle: "Calm, dress up & celebrate")
+
+            LazyVGrid(
+                columns: [GridItem(.flexible(), spacing: narrow ? 10 : 14), GridItem(.flexible(), spacing: narrow ? 10 : 14)],
+                spacing: narrow ? 10 : 14
             ) {
-                bonusDestination = .petShop
+                bonusButton(title: "Calm Corner", symbol: "wind", tint: LearningTheme.accent) {
+                    bonusDestination = .calmCorner
+                }
+                bonusButton(title: "Pet Shop", symbol: "tshirt.fill", tint: LearningTheme.coral) {
+                    bonusDestination = .petShop
+                }
+                bonusButton(title: "Stickers", symbol: "seal.fill", tint: Color(red: 0.55, green: 0.40, blue: 0.78)) {
+                    bonusDestination = .stickerBook
+                }
+                bonusButton(title: "Daily Spin", symbol: "gift.fill", tint: LearningTheme.sunshine) {
+                    withAnimation(LearningTheme.forgivingSpring) {
+                        showDailySpin = true
+                    }
+                }
             }
 
-            bonusButton(
-                title: "Bubble Pop",
-                symbol: "bubbles.and.sparkles.fill",
-                tint: LearningTheme.accent
-            ) {
-                bonusDestination = .bubblePop
-            }
+            sectionTitle("Quick play", subtitle: "Short sensory games anytime")
 
-            bonusButton(
-                title: "Patterns",
-                symbol: "square.grid.3x3.fill",
-                tint: Color(red: 0.42, green: 0.58, blue: 0.95)
+            LazyVGrid(
+                columns: [GridItem(.flexible(), spacing: narrow ? 10 : 14), GridItem(.flexible(), spacing: narrow ? 10 : 14)],
+                spacing: narrow ? 10 : 14
             ) {
-                bonusDestination = .patternConstructor
+                bonusButton(title: "Bubble Pop", symbol: "bubbles.and.sparkles.fill", tint: LearningTheme.accent) {
+                    bonusDestination = .bubblePop
+                }
+                bonusButton(title: "Patterns", symbol: "square.grid.3x3.fill", tint: Color(red: 0.42, green: 0.58, blue: 0.95)) {
+                    bonusDestination = .patternConstructor
+                }
+                bonusButton(title: "Focus Pilot", symbol: "paperplane.fill", tint: LearningTheme.sunshine) {
+                    bonusDestination = .focusPilot
+                }
+                bonusButton(title: "Rhythm Tap", symbol: "music.note", tint: LearningTheme.coral) {
+                    bonusDestination = .rhythmTap
+                }
+                bonusButton(title: "Memory", symbol: "rectangle.on.rectangle.angled", tint: Color(red: 0.98, green: 0.55, blue: 0.20)) {
+                    bonusDestination = .memoryMatch
+                }
             }
+        }
+    }
 
-            bonusButton(
-                title: "Focus Pilot",
-                symbol: "paperplane.fill",
-                tint: LearningTheme.sunshine
-            ) {
-                bonusDestination = .focusPilot
-            }
+    private func sectionTitle(_ title: String, subtitle: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.system(.title3, design: .rounded).weight(.heavy))
+                .foregroundStyle(LearningTheme.ink)
+            Text(subtitle)
+                .font(.system(.caption, design: .rounded).weight(.semibold))
+                .foregroundStyle(LearningTheme.mutedInk)
         }
     }
 
@@ -296,6 +278,149 @@ struct ContentView: View {
         .accessibilityLabel(title)
     }
 
+    // MARK: - Destinations
+
+    @ViewBuilder
+    private func bonusDestinationView(_ destination: BonusDestination) -> some View {
+        switch destination {
+        case .petShop:
+            PetShopView(profile: profile, onClose: { bonusDestination = nil })
+        case .bubblePop:
+            BubblePopView(
+                onRoundFinished: awardBonusCoins,
+                onReturnToMap: { bonusDestination = nil }
+            )
+        case .patternConstructor:
+            PatternConstructorView(
+                onRoundFinished: awardBonusCoins,
+                onReturnToMap: { bonusDestination = nil }
+            )
+        case .focusPilot:
+            FocusPilotView(
+                onRoundFinished: awardBonusCoins,
+                onReturnToMap: { bonusDestination = nil }
+            )
+        case .calmCorner:
+            CalmCornerView(onReturnToMap: { bonusDestination = nil })
+        case .rhythmTap:
+            RhythmTapView(
+                onRoundFinished: awardBonusCoins,
+                onReturnToMap: { bonusDestination = nil }
+            )
+        case .memoryMatch:
+            MemoryMatchBonusView(
+                pairCount: ageBand.memoryPairs,
+                onRoundFinished: awardBonusCoins,
+                onReturnToMap: { bonusDestination = nil }
+            )
+        case .stickerBook:
+            StickerBookView(
+                completedCount: completedCount,
+                onClose: { bonusDestination = nil }
+            )
+        }
+    }
+
+    private func awardBonusCoins(_ coins: Int) {
+        withAnimation(LearningTheme.successBump) {
+            profile.totalCoins = min(profile.totalCoins + max(0, coins), 9_999)
+        }
+    }
+
+    // MARK: - Overlays
+
+    private var dailySpinOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    withAnimation(LearningTheme.forgivingSpring) {
+                        showDailySpin = false
+                    }
+                }
+
+            DailySpinSheet(
+                onClaim: { coins in
+                    let awarded = progress.claimDailySpin(rewardCoins: coins)
+                    withAnimation(LearningTheme.successBump) {
+                        profile.totalCoins = min(profile.totalCoins + awarded, 9_999)
+                    }
+                },
+                onDismiss: {
+                    withAnimation(LearningTheme.forgivingSpring) {
+                        showDailySpin = false
+                    }
+                }
+            )
+            .transition(.scale(scale: 0.86).combined(with: .opacity))
+        }
+        .animation(LearningTheme.forgivingSpring, value: showDailySpin)
+    }
+
+    private func stickerUnlockOverlay(_ sticker: StickerBadge) -> some View {
+        ZStack {
+            Color.black.opacity(0.35)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    withAnimation(LearningTheme.forgivingSpring) {
+                        newlyUnlockedSticker = nil
+                    }
+                }
+
+            VStack(spacing: 14) {
+                Image(systemName: sticker.symbolName)
+                    .font(.system(size: 44, weight: .bold))
+                    .foregroundStyle(sticker.tint)
+                    .padding(18)
+                    .background {
+                        Circle().fill(sticker.tint.opacity(0.18))
+                    }
+
+                Text("New sticker!")
+                    .font(.system(.title, design: .rounded).weight(.heavy))
+                    .foregroundStyle(LearningTheme.ink)
+
+                Text(sticker.title)
+                    .font(.system(.title3, design: .rounded).weight(.bold))
+                    .foregroundStyle(sticker.tint)
+
+                Text(sticker.subtitle)
+                    .font(.system(.body, design: .rounded).weight(.semibold))
+                    .foregroundStyle(LearningTheme.mutedInk)
+                    .multilineTextAlignment(.center)
+
+                Button {
+                    withAnimation(LearningTheme.forgivingSpring) {
+                        newlyUnlockedSticker = nil
+                    }
+                } label: {
+                    Text("Yay!")
+                        .font(.system(.title3, design: .rounded).weight(.heavy))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: LearningTheme.minTouchTarget)
+                        .background {
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .fill(LearningTheme.success)
+                        }
+                }
+                .buttonStyle(KidBounceButtonStyle())
+            }
+            .padding(22)
+            .frame(maxWidth: 340)
+            .background {
+                RoundedRectangle(cornerRadius: 32, style: .continuous)
+                    .fill(LearningTheme.surface)
+                    .shadow(color: .black.opacity(0.14), radius: 20, y: 10)
+            }
+            .padding(24)
+            .transition(.scale(scale: 0.88).combined(with: .opacity))
+        }
+        .animation(LearningTheme.forgivingSpring, value: newlyUnlockedSticker?.id)
+    }
+
+    // MARK: - Helpers
+
     private var pathSubtitle: String {
         if let today = progress.todaysChapter, !today.isCompleted {
             return "Day \(today.dayNumber) is unlocked — tap the glowing island!"
@@ -330,6 +455,18 @@ struct ContentView: View {
         UserDefaults.standard.set(today, forKey: dayKey)
         UserDefaults.standard.set(streakDays, forKey: streakStorageKey)
     }
+
+    private func checkStickers() {
+        let fresh = stickerStore.sync(completedCount: progress.completedCount)
+        if let first = fresh.first {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
+                withAnimation(LearningTheme.buddyBounce) {
+                    newlyUnlockedSticker = first
+                }
+                AudioHapticManager.shared.playSuccess()
+            }
+        }
+    }
 }
 
 // MARK: - Bonus destinations
@@ -339,6 +476,10 @@ private enum BonusDestination: String, Identifiable, Hashable {
     case bubblePop
     case patternConstructor
     case focusPilot
+    case calmCorner
+    case rhythmTap
+    case memoryMatch
+    case stickerBook
 
     var id: String { rawValue }
 }
