@@ -83,6 +83,17 @@ final class AudioHapticManager {
         )
     }
 
+    /// Quick bubble-pop blip for the Bubble Pop mini-game.
+    func playPop() {
+        playChime(
+            notes: [
+                (frequency: 1320, duration: 0.035, volume: 0.22),
+                (frequency: 1760, duration: 0.045, volume: 0.14)
+            ],
+            wave: .sparkle
+        )
+    }
+
     // MARK: - Engine
 
     private func armEngineIfNeeded() -> Bool {

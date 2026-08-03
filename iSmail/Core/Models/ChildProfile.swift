@@ -53,6 +53,7 @@ final class ChildProfile {
         let id = profileID.uuidString
         defaults.removeObject(forKey: "adventure.streak.\(id)")
         defaults.removeObject(forKey: "adventure.streakDay.\(id)")
+        PetWardrobeStore.clear(for: profileID, defaults: defaults)
     }
 }
 
