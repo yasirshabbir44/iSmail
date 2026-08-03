@@ -2,18 +2,22 @@
 //  ChapterNode.swift
 //  iSmail
 //
-//  Daily adventure-map chapter model — one unlockable node per calendar day.
+//  Adventure-map chapter model — themed multi-step lesson island.
 //
 
 import Foundation
 
-/// A single calendar-gated lesson island on the adventure path.
+/// A single unlockable chapter island on the adventure path.
 struct ChapterNode: Identifiable, Hashable, Codable, Sendable {
     let id: UUID
     /// 1-based day index along the campaign path.
     var dayNumber: Int
     var title: String
+    var subtitle: String
+    var world: LearningWorld
     var type: ActivityType
+    /// How many play activities are inside this chapter.
+    var stepCount: Int
     /// Local midnight of the unlock calendar day.
     var unlockDate: Date
     var isCompleted: Bool
@@ -25,7 +29,10 @@ struct ChapterNode: Identifiable, Hashable, Codable, Sendable {
         id: UUID = UUID(),
         dayNumber: Int,
         title: String,
+        subtitle: String = "",
+        world: LearningWorld = .animalFriends,
         type: ActivityType,
+        stepCount: Int = 3,
         unlockDate: Date,
         isCompleted: Bool = false,
         isChestReward: Bool = false,
@@ -34,7 +41,10 @@ struct ChapterNode: Identifiable, Hashable, Codable, Sendable {
         self.id = id
         self.dayNumber = dayNumber
         self.title = title
+        self.subtitle = subtitle
+        self.world = world
         self.type = type
+        self.stepCount = max(1, stepCount)
         self.unlockDate = unlockDate
         self.isCompleted = isCompleted
         self.isChestReward = isChestReward

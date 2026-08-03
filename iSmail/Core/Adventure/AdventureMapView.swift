@@ -18,7 +18,7 @@ struct AdventureMapView: View {
 
     private let mapSpring = Animation.spring(response: 0.4, dampingFraction: 0.7)
     private let nodeSize: CGFloat = 84
-    private let estimatedMinutes = 2
+    private let estimatedMinutes = 5
 
     var body: some View {
         GeometryReader { geo in
@@ -68,8 +68,8 @@ struct AdventureMapView: View {
                     } label: {
                         MapNodeView(
                             step: chapter.dayNumber,
-                            symbolName: chapter.type.systemImage,
-                            tint: LearningTheme.activityTint(for: chapter.type),
+                            symbolName: chapter.world.symbolName,
+                            tint: chapter.world.tint,
                             state: state,
                             size: nodeSize,
                             isChestReward: chapter.isChestReward,
@@ -82,6 +82,7 @@ struct AdventureMapView: View {
                     .disabled(state == .locked)
                     .position(point)
                     .accessibilityHint(accessibilityHint(for: chapterStatus))
+                    .accessibilityLabel("Chapter \(chapter.dayNumber), \(chapter.title), \(chapter.world.title)")
                 }
             }
             .frame(width: width, height: mapHeight)
@@ -99,7 +100,7 @@ struct AdventureMapView: View {
                     onStartLesson(selected)
                 }
             )
-            .presentationDetents([.medium])
+            .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
             .presentationCornerRadius(28)
         }
@@ -236,10 +237,14 @@ private struct LessonPreviewSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     private let mapSpring = Animation.spring(response: 0.4, dampingFraction: 0.7)
-    private var tint: Color { LearningTheme.activityTint(for: chapter.type) }
+    private var tint: Color { chapter.world.tint }
+
+    private var stepLabels: [String] {
+        Array(["Warm-up", "Play", "Wrap-up"].prefix(chapter.stepCount))
+    }
 
     var body: some View {
-        VStack(spacing: 22) {
+        VStack(spacing: 18) {
             HStack {
                 Spacer(minLength: 0)
                 Capsule()
@@ -274,24 +279,70 @@ private struct LessonPreviewSheet: View {
                         .foregroundStyle(.white)
                 } else {
                     Circle()
-                        .fill(LearningTheme.activitySoft(for: chapter.type))
+                        .fill(tint.opacity(0.18))
                         .frame(width: 96, height: 96)
 
-                    Image(systemName: chapter.type.systemImage)
+                    Image(systemName: chapter.world.symbolName)
                         .font(.system(size: 40, weight: .bold))
                         .foregroundStyle(tint)
                 }
             }
 
-            Text(chapter.title)
-                .font(.system(.title, design: .rounded).weight(.heavy))
-                .foregroundStyle(LearningTheme.ink)
-                .multilineTextAlignment(.center)
-                .minimumScaleFactor(0.85)
+            VStack(spacing: 6) {
+                Text(chapter.world.title.uppercased())
+                    .font(.system(.caption, design: .rounded).weight(.heavy))
+                    .foregroundStyle(tint)
+                    .tracking(0.8)
 
-            Text(chapter.type.skillTag)
-                .font(.system(.subheadline, design: .rounded).weight(.heavy))
-                .foregroundStyle(tint)
+                Text(chapter.title)
+                    .font(.system(.title, design: .rounded).weight(.heavy))
+                    .foregroundStyle(LearningTheme.ink)
+                    .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.85)
+
+                Text(chapter.subtitle)
+                    .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                    .foregroundStyle(LearningTheme.mutedInk)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            // Chapter steps strip — LingoKids-style lesson outline
+            HStack(spacing: 8) {
+                ForEach(Array(stepLabels.enumerated()), id: \.offset) { index, label in
+                    VStack(spacing: 6) {
+                        Text("\(index + 1)")
+                            .font(.system(.caption, design: .rounded).weight(.heavy))
+                            .foregroundStyle(.white)
+                            .frame(width: 28, height: 28)
+                            .background(Circle().fill(tint))
+
+                        Text(label)
+                            .font(.system(.caption2, design: .rounded).weight(.bold))
+                            .foregroundStyle(LearningTheme.ink)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                    .frame(maxWidth: .infinity)
+
+                    if index < stepLabels.count - 1 {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(LearningTheme.mutedInk.opacity(0.5))
+                            .padding(.bottom, 18)
+                    }
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 12)
+            .background {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(LearningTheme.surface.opacity(0.95))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .strokeBorder(tint.opacity(0.25), lineWidth: 2)
+                    }
+            }
 
             HStack(spacing: 12) {
                 metaChip(
@@ -300,15 +351,20 @@ private struct LessonPreviewSheet: View {
                     color: LearningTheme.accent
                 )
                 metaChip(
+                    icon: "square.stack.3d.up.fill",
+                    label: "\(chapter.stepCount) plays",
+                    color: tint
+                )
+                metaChip(
                     icon: "star.fill",
-                    label: "+\(chapter.rewardCoins) Coins",
+                    label: "+\(chapter.rewardCoins)",
                     color: LearningTheme.sunshine
                 )
             }
 
             Button(action: onStart) {
-                Text("START")
-                    .font(.system(size: 28, weight: .heavy, design: .rounded))
+                Text("START CHAPTER")
+                    .font(.system(size: 24, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .frame(height: 64)
@@ -317,7 +373,7 @@ private struct LessonPreviewSheet: View {
             }
             .buttonStyle(KidBounceButtonStyle())
             .padding(.top, 4)
-            .accessibilityLabel("Start \(chapter.title)")
+            .accessibilityLabel("Start chapter \(chapter.title)")
 
             Spacer(minLength: 0)
         }
@@ -339,15 +395,17 @@ private struct LessonPreviewSheet: View {
     }
 
     private func metaChip(icon: String, label: String, color: Color) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             Image(systemName: icon)
-                .font(.system(size: 14, weight: .bold))
+                .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(color)
             Text(label)
-                .font(.system(.subheadline, design: .rounded).weight(.bold))
+                .font(.system(.caption, design: .rounded).weight(.bold))
                 .foregroundStyle(LearningTheme.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .background {
             Capsule(style: .continuous)

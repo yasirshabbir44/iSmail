@@ -123,7 +123,7 @@ final class DailyProgressManager {
         if let index = chapters.firstIndex(where: { $0.id == node.id }),
            index > 0,
            !chapters[index - 1].isCompleted {
-            return "Finish Day \(chapters[index - 1].dayNumber)"
+            return "Finish Chapter \(chapters[index - 1].dayNumber)"
         }
 
         if calendar.isDateInTomorrow(node.unlockDate) {

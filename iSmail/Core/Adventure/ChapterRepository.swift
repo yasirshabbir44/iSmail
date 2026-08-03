@@ -2,33 +2,41 @@
 //  ChapterRepository.swift
 //  iSmail
 //
-//  Dynamic chapter catalog — one new chapter unlocks each calendar day.
+//  Themed multi-step chapter catalog — one new chapter unlocks each calendar day.
 //
 
 import CryptoKit
 import Foundation
 
-/// Builds the rolling daily chapter path and resolves playable `TaskNode` content.
+/// Builds the rolling daily chapter path and resolves playable `ChapterLesson` content.
 enum ChapterRepository: Sendable {
     /// Default campaign length shown on the winding map.
     nonisolated static let defaultChapterCount = 15
 
-    private static let catalog: [(title: String, type: ActivityType, coins: Int)] = [
-        ("Animal Sounds", .dragAndDrop, 5),
-        ("Pick the Fruit", .tapAndSelect, 6),
-        ("Morning Steps", .sequenceOrder, 7),
-        ("Color Match", .dragAndDrop, 5),
-        ("Find the Star", .tapAndSelect, 6),
-        ("Bedtime Order", .sequenceOrder, 7),
-        ("Pet Pals", .dragAndDrop, 5),
-        ("Snack Time", .tapAndSelect, 6),
-        ("Get Ready", .sequenceOrder, 7),
-        ("Brave Little Fox", .storyTime, 8),
-        ("Weather Match", .dragAndDrop, 6),
-        ("Feelings", .tapAndSelect, 6),
-        ("Park Day Steps", .sequenceOrder, 7),
-        ("Memory Garden", .memoryMatch, 8),
-        ("Star Wish", .storyTime, 8)
+    private struct CatalogEntry {
+        let title: String
+        let subtitle: String
+        let type: ActivityType
+        let coins: Int
+        let stepCount: Int
+    }
+
+    private static let catalog: [CatalogEntry] = [
+        CatalogEntry(title: "Animal Sounds", subtitle: "Meet animal pals and match their sounds", type: .dragAndDrop, coins: 12, stepCount: 3),
+        CatalogEntry(title: "Fruit Friends", subtitle: "Find fruits and match sunny colors", type: .tapAndSelect, coins: 12, stepCount: 3),
+        CatalogEntry(title: "Pet Homes", subtitle: "Help every pet find a cozy home", type: .dragAndDrop, coins: 12, stepCount: 3),
+        CatalogEntry(title: "Color World", subtitle: "Colors, shapes, and morning routines", type: .dragAndDrop, coins: 12, stepCount: 3),
+        CatalogEntry(title: "Morning Star", subtitle: "Start the day with stars and steps", type: .sequenceOrder, coins: 15, stepCount: 3),
+        CatalogEntry(title: "Cozy Bedtime", subtitle: "A calm bedtime from bath to sleep", type: .sequenceOrder, coins: 12, stepCount: 3),
+        CatalogEntry(title: "Snack Heroes", subtitle: "Healthy snacks and happy choices", type: .tapAndSelect, coins: 12, stepCount: 3),
+        CatalogEntry(title: "Ready, Go!", subtitle: "Getting ready to go out into the world", type: .sequenceOrder, coins: 12, stepCount: 3),
+        CatalogEntry(title: "Big Feelings", subtitle: "Name feelings and cheer for friends", type: .tapAndSelect, coins: 12, stepCount: 3),
+        CatalogEntry(title: "Brave Little Fox", subtitle: "A brave fox story and forest friends", type: .storyTime, coins: 18, stepCount: 3),
+        CatalogEntry(title: "Weather Day", subtitle: "Match weather to what you might need", type: .dragAndDrop, coins: 12, stepCount: 3),
+        CatalogEntry(title: "Park Adventure", subtitle: "Pack, play, snack — a perfect park day", type: .sequenceOrder, coins: 12, stepCount: 3),
+        CatalogEntry(title: "Memory Garden", subtitle: "Flip cards in a blooming memory garden", type: .memoryMatch, coins: 12, stepCount: 3),
+        CatalogEntry(title: "Kind Wishes", subtitle: "Practice kindness before the finale", type: .storyTime, coins: 12, stepCount: 3),
+        CatalogEntry(title: "Star Wish", subtitle: "The big star-wish story — you made it!", type: .storyTime, coins: 20, stepCount: 3)
     ]
 
     /// Generates `count` chapters starting at local midnight of `startDate`.
@@ -47,13 +55,17 @@ enum ChapterRepository: Sendable {
             let unlock = calendar.date(byAdding: .day, value: index, to: start) ?? start
             let id = deterministicID(dayNumber: dayNumber, start: start)
             let isChest = dayNumber.isMultiple(of: 5)
-            let coins = isChest ? max(entry.coins, 15) : entry.coins
+            let coins = isChest ? max(entry.coins, 18) : entry.coins
+            let world = LearningWorld.world(forDay: dayNumber)
 
             return ChapterNode(
                 id: id,
                 dayNumber: dayNumber,
                 title: isChest ? "\(entry.title) Chest" : entry.title,
+                subtitle: entry.subtitle,
+                world: world,
                 type: entry.type,
+                stepCount: entry.stepCount,
                 unlockDate: unlock,
                 isCompleted: completedIDs.contains(id),
                 isChestReward: isChest,
@@ -62,7 +74,12 @@ enum ChapterRepository: Sendable {
         }
     }
 
-    /// Maps a chapter to a runnable learning task, tailored by age when provided.
+    /// Maps a chapter to a full multi-step lesson, tailored by age.
+    static func lesson(for chapter: ChapterNode, ageYears: Int = 6) -> ChapterLesson {
+        CurriculumCatalog.lesson(for: chapter, ageYears: ageYears)
+    }
+
+    /// Legacy single-task resolve.
     static func task(for chapter: ChapterNode, ageYears: Int = 6) -> TaskNode {
         CurriculumCatalog.task(for: chapter, ageYears: ageYears)
     }
