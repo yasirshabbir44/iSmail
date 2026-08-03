@@ -2,7 +2,7 @@
 //  ContentView.swift
 //  iSmail
 //
-//  Kids home hub — winding adventure path inspired by LingoKids-style learning apps.
+//  Kids home hub — winding adventure path with daily chapter unlocks.
 //
 
 import SwiftData
@@ -12,19 +12,24 @@ struct ContentView: View {
     @Bindable var profile: ChildProfile
     @Environment(AppSession.self) private var session
 
+    @State private var progress: DailyProgressManager
     @State private var selectedTask: TaskNode?
-    @State private var completedTaskIDs: Set<UUID> = []
     @State private var streakDays: Int = 3
+    @State private var showDailySpin = false
 
-    private let samples = TaskNode.chapter2Samples
     private let mapSpring = Animation.spring(response: 0.4, dampingFraction: 0.7)
 
-    private var completedCount: Int {
-        samples.filter { completedTaskIDs.contains($0.id) }.count
-    }
+    private var completedCount: Int { progress.completedCount }
 
     private var streakStorageKey: String {
         "adventure.streak.\(profile.id.uuidString)"
+    }
+
+    init(profile: ChildProfile) {
+        self.profile = profile
+        _progress = State(
+            initialValue: DailyProgressManager(profileID: profile.id)
+        )
     }
 
     var body: some View {
@@ -49,10 +54,11 @@ struct ContentView: View {
                         pathIntro(narrow: isNarrow)
 
                         AdventureMapView(
-                            tasks: samples,
-                            completedTaskIDs: completedTaskIDs
-                        ) { task in
-                            selectedTask = task
+                            chapters: progress.chapters,
+                            progress: progress,
+                            avatarId: profile.avatarId
+                        ) { chapter in
+                            selectedTask = ChapterRepository.task(for: chapter)
                         }
                     }
                     .padding(.horizontal, isNarrow ? 16 : 20)
@@ -68,17 +74,50 @@ struct ContentView: View {
                     ActivityRunnerView(task: task) { coins in
                         withAnimation(LearningTheme.successBump) {
                             profile.totalCoins = min(profile.totalCoins + max(0, coins), 9_999)
-                            completedTaskIDs.insert(task.id)
+                            progress.markCompleted(id: task.id)
                         }
                         bumpStreakIfNeeded()
                     }
                 }
             }
         }
+        .overlay {
+            if showDailySpin {
+                ZStack {
+                    Color.black.opacity(0.4)
+                        .ignoresSafeArea()
+                        .onTapGesture { /* require claim via button */ }
+
+                    DailySpinSheet(
+                        onClaim: { coins in
+                            let awarded = progress.claimDailySpin(rewardCoins: coins)
+                            withAnimation(LearningTheme.successBump) {
+                                profile.totalCoins = min(profile.totalCoins + awarded, 9_999)
+                            }
+                        },
+                        onDismiss: {
+                            withAnimation(LearningTheme.forgivingSpring) {
+                                showDailySpin = false
+                            }
+                        }
+                    )
+                    .transition(.scale(scale: 0.86).combined(with: .opacity))
+                }
+                .animation(LearningTheme.forgivingSpring, value: showDailySpin)
+            }
+        }
         .onAppear {
             let stored = UserDefaults.standard.integer(forKey: streakStorageKey)
             if stored > 0 {
                 streakDays = stored
+            }
+            progress.refreshSpinClaimIfNeeded()
+            if !progress.hasClaimedDailySpin {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                    withAnimation(LearningTheme.forgivingSpring) {
+                        showDailySpin = true
+                    }
+                }
             }
         }
     }
@@ -97,7 +136,7 @@ struct ContentView: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             LessonProgressPips(
-                total: samples.count,
+                total: progress.chapters.count,
                 completed: completedCount,
                 tint: LearningTheme.accent
             )
@@ -118,13 +157,16 @@ struct ContentView: View {
     }
 
     private var pathSubtitle: String {
+        if let today = progress.todaysChapter, !today.isCompleted {
+            return "Day \(today.dayNumber) is unlocked — tap the glowing island!"
+        }
         if completedCount == 0 {
-            return "Follow the winding path — tap the glowing node!"
+            return "Follow the winding path — a new chapter unlocks every day!"
         }
-        if completedCount >= samples.count {
-            return "You finished today's path — replay any island!"
+        if completedCount >= progress.chapters.count {
+            return "You cleared the whole path — amazing!"
         }
-        return "Great job! \(completedCount) of \(samples.count) islands cleared."
+        return "Great job! \(completedCount) of \(progress.chapters.count) islands cleared."
     }
 
     private func bumpStreakIfNeeded() {
@@ -134,7 +176,6 @@ struct ContentView: View {
         guard last != today else { return }
 
         withAnimation(mapSpring) {
-            // First tracked day keeps the seeded streak; later days increment.
             if last != 0 {
                 streakDays += 1
             }
