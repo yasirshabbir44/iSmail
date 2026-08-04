@@ -2,7 +2,7 @@
 //  LearnPracticeCatalog.swift
 //  iSmail
 //
-//  Anytime practice packs — Letters, Numbers, Words & Songs (LingoKids-style).
+//  Anytime practice packs — Letters, Numbers, Words, Songs, Storybook & Trace.
 //
 
 import Foundation
@@ -13,6 +13,8 @@ enum LearnPracticeCategory: String, CaseIterable, Identifiable, Hashable, Sendab
     case numbers
     case words
     case songs
+    case storybook
+    case trace
 
     var id: String { rawValue }
 
@@ -22,6 +24,8 @@ enum LearnPracticeCategory: String, CaseIterable, Identifiable, Hashable, Sendab
         case .numbers: "Numbers"
         case .words: "Words"
         case .songs: "Songs"
+        case .storybook: "Storybook"
+        case .trace: "Trace"
         }
     }
 
@@ -31,6 +35,8 @@ enum LearnPracticeCategory: String, CaseIterable, Identifiable, Hashable, Sendab
         case .numbers: "Count & tap 1-2-3"
         case .words: "Say everyday words"
         case .songs: "Sing along gently"
+        case .storybook: "Page-turn night stories"
+        case .trace: "Write letters & shapes"
         }
     }
 
@@ -40,6 +46,8 @@ enum LearnPracticeCategory: String, CaseIterable, Identifiable, Hashable, Sendab
         case .numbers: "number.circle.fill"
         case .words: "mouth.fill"
         case .songs: "music.note.list"
+        case .storybook: "moon.stars.fill"
+        case .trace: "pencil.and.outline"
         }
     }
 
@@ -49,6 +57,8 @@ enum LearnPracticeCategory: String, CaseIterable, Identifiable, Hashable, Sendab
         case .numbers: 0.95
         case .words: 0.35
         case .songs: 0.55
+        case .storybook: 0.28
+        case .trace: 0.95
         }
     }
 
@@ -58,6 +68,8 @@ enum LearnPracticeCategory: String, CaseIterable, Identifiable, Hashable, Sendab
         case .numbers: 0.45
         case .words: 0.72
         case .songs: 0.40
+        case .storybook: 0.32
+        case .trace: 0.55
         }
     }
 
@@ -67,6 +79,8 @@ enum LearnPracticeCategory: String, CaseIterable, Identifiable, Hashable, Sendab
         case .numbers: 0.55
         case .words: 0.55
         case .songs: 0.78
+        case .storybook: 0.72
+        case .trace: 0.25
         }
     }
 }
@@ -85,6 +99,10 @@ enum LearnPracticeCatalog: Sendable {
             return wordRound(band: band)
         case .songs:
             return [songTask(band: band)]
+        case .storybook:
+            return [storybookTask(band: band)]
+        case .trace:
+            return traceRound(band: band)
         }
     }
 
@@ -236,6 +254,81 @@ enum LearnPracticeCatalog: Sendable {
             payload: .storyTime(StoryTimeContent(pages: pages)),
             rewardCoins: 5
         )
+    }
+
+    // MARK: - Storybook
+
+    private static func storybookTask(band: AgeBand) -> TaskNode {
+        let content: InteractiveStorybookContent
+        switch band {
+        case .little:
+            content = .moonlightGoodnight
+        case .explorer, .adventurer:
+            content = Bool.random() ? .moonlightGoodnight : .twilightForest
+        }
+
+        return TaskNode(
+            title: content.bookTitle,
+            prompt: "Turn the pages and tap the nighttime friends!",
+            activityType: .interactiveStorybook,
+            payload: .interactiveStorybook(content),
+            rewardCoins: 6
+        )
+    }
+
+    // MARK: - Trace & Write
+
+    private static func traceRound(band: AgeBand) -> [TaskNode] {
+        let coverage = band == .little ? 0.68 : (band == .explorer ? 0.72 : 0.76)
+        let accuracy = band == .little ? 0.42 : (band == .explorer ? 0.48 : 0.52)
+
+        let pool: [(String, String, TraceGlyphKind, String)]
+        switch band {
+        case .little:
+            pool = [
+                ("O", "O", .uppercaseLetter, "Trace big O — round like a cookie!"),
+                ("L", "L", .uppercaseLetter, "Trace L — down, then across!"),
+                ("1", "1", .number, "Trace number 1 — nice and tall!"),
+                ("circle", "○", .shape, "Trace a circle — round and round!")
+            ]
+        case .explorer:
+            pool = [
+                ("A", "A", .uppercaseLetter, "Trace A — two mountain sides, then the belt!"),
+                ("C", "C", .uppercaseLetter, "Trace C — open like a smile!"),
+                ("3", "3", .number, "Trace number 3 — two bumpy curves!"),
+                ("square", "□", .shape, "Trace a square — four friendly sides!"),
+                ("a", "a", .lowercaseLetter, "Trace little a — round belly, then a stick!")
+            ]
+        case .adventurer:
+            pool = [
+                ("B", "B", .uppercaseLetter, "Trace B — a tall stick with two bumps!"),
+                ("u", "u", .lowercaseLetter, "Trace little u — a cup, then a stick!"),
+                ("5", "5", .number, "Trace number 5 — hat, belly, and a curve!"),
+                ("triangle", "△", .shape, "Trace a triangle — three pointy sides!"),
+                ("star", "★", .shape, "Trace a star — zig zag sparkle!"),
+                ("4", "4", .number, "Trace number 4 — open door and a tall line!")
+            ]
+        }
+
+        let count = band == .little ? 3 : (band == .explorer ? 4 : 5)
+        return pool.shuffled().prefix(count).map { entry in
+            TaskNode(
+                title: "Trace \(entry.1)",
+                prompt: "Trace \(entry.1) with your finger!",
+                activityType: .traceWrite,
+                payload: .traceWrite(
+                    TraceWriteContent(
+                        glyphID: entry.0,
+                        displayLabel: entry.1,
+                        kind: entry.2,
+                        coachLine: entry.3,
+                        passCoverage: coverage,
+                        passAccuracy: accuracy
+                    )
+                ),
+                rewardCoins: 4
+            )
+        }
     }
 
     private static func tailor(_ task: TaskNode, band: AgeBand) -> TaskNode {

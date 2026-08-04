@@ -96,13 +96,15 @@ enum CurriculumCatalog: Sendable {
             copy.payload = .sequenceOrder(content.limited(to: band.sequenceLength))
         case .storyTime:
             break
+        case .interactiveStorybook:
+            break
         case .memoryMatch(let content):
             copy.payload = .memoryMatch(content.limited(to: band.memoryPairs))
         case .letterHunt(let content):
             copy.payload = .letterHunt(content.limited(to: band.choiceCount))
         case .countTap(let content):
             copy.payload = .countTap(content.limited(to: band.choiceCount))
-        case .speakAndSay:
+        case .speakAndSay, .traceWrite:
             break
         }
         return copy
@@ -114,10 +116,12 @@ enum CurriculumCatalog: Sendable {
         case .tapAndSelect: return makePickApple()
         case .sequenceOrder: return makeMorningSteps()
         case .storyTime: return makeBraveFoxStory()
+        case .interactiveStorybook: return makeMoonlightStorybook()
         case .memoryMatch: return makeMemoryGarden()
         case .letterHunt: return makeLetterHuntA()
         case .countTap: return makeCountStars()
         case .speakAndSay: return makeSpeakApple()
+        case .traceWrite: return makeTraceLetterA()
         }
     }
 
@@ -167,7 +171,7 @@ enum CurriculumCatalog: Sendable {
             skillTag: "Colors",
             steps: [
                 LessonStep(label: "Warm-up", task: makeFindStar()),
-                LessonStep(label: "Match", task: makeColorMatch()),
+                LessonStep(label: "Trace", task: makeTraceCircle()),
                 LessonStep(label: "Order", task: makeMorningSteps())
             ]
         )
@@ -289,12 +293,12 @@ enum CurriculumCatalog: Sendable {
 
     private static var kindWishChapter: Blueprint {
         Blueprint(
-            subtitle: "Practice kindness before the finale",
+            subtitle: "A cozy moonlight storybook before the finale",
             skillTag: "Kindness",
             steps: [
                 LessonStep(label: "Warm-up", task: makeEmotionHappy()),
                 LessonStep(label: "Order", task: makeBedtimeOrder()),
-                LessonStep(label: "Story", task: makeStarWishStory())
+                LessonStep(label: "Storybook", task: makeMoonlightStorybook())
             ]
         )
     }
@@ -315,23 +319,23 @@ enum CurriculumCatalog: Sendable {
 
     private static var letterAHuntChapter: Blueprint {
         Blueprint(
-            subtitle: "Find A and say its friendly sound",
+            subtitle: "Find A, trace it, and say its friendly sound",
             skillTag: "Phonics",
             steps: [
                 LessonStep(label: "Warm-up", task: makeLetterHuntA()),
-                LessonStep(label: "Speak", task: makeSpeakApple()),
-                LessonStep(label: "Hunt", task: makeLetterHuntB())
+                LessonStep(label: "Trace", task: makeTraceLetterA()),
+                LessonStep(label: "Speak", task: makeSpeakApple())
             ]
         )
     }
 
     private static var letterFriendsChapter: Blueprint {
         Blueprint(
-            subtitle: "Hunt B, C & D with phonics tips",
+            subtitle: "Hunt letters and practice tracing",
             skillTag: "ABC",
             steps: [
                 LessonStep(label: "Warm-up", task: makeLetterHuntB()),
-                LessonStep(label: "Hunt", task: makeLetterHuntC()),
+                LessonStep(label: "Trace", task: makeTraceLetterO()),
                 LessonStep(label: "Speak", task: makeSpeakDog())
             ]
         )
@@ -353,11 +357,11 @@ enum CurriculumCatalog: Sendable {
 
     private static var countToThreeChapter: Blueprint {
         Blueprint(
-            subtitle: "Count stars, hearts & apples",
+            subtitle: "Count stars and trace friendly numbers",
             skillTag: "Counting",
             steps: [
                 LessonStep(label: "Warm-up", task: makeCountStars()),
-                LessonStep(label: "Count", task: makeCountHearts()),
+                LessonStep(label: "Trace", task: makeTraceNumber1()),
                 LessonStep(label: "Speak", task: makeSpeakSun())
             ]
         )
@@ -365,11 +369,11 @@ enum CurriculumCatalog: Sendable {
 
     private static var numberPartyChapter: Blueprint {
         Blueprint(
-            subtitle: "Bigger counts and number choices",
+            subtitle: "Bigger counts, tracing & number choices",
             skillTag: "Numbers",
             steps: [
                 LessonStep(label: "Warm-up", task: makeCountApples()),
-                LessonStep(label: "Count", task: makeCountStars()),
+                LessonStep(label: "Trace", task: makeTraceNumber3()),
                 LessonStep(label: "Choose", task: makePickApple())
             ]
         )
@@ -914,6 +918,16 @@ enum CurriculumCatalog: Sendable {
         )
     }
 
+    private static func makeMoonlightStorybook() -> TaskNode {
+        TaskNode(
+            title: "Moonlight Goodnight",
+            prompt: "Turn the pages and tap the nighttime friends!",
+            activityType: .interactiveStorybook,
+            payload: .interactiveStorybook(.moonlightGoodnight),
+            rewardCoins: 6
+        )
+    }
+
     // MARK: - Letter / Number / Speak factories
 
     private static func makeLetterHuntA() -> TaskNode {
@@ -1031,6 +1045,91 @@ enum CurriculumCatalog: Sendable {
         )
     }
 
+    private static func makeTraceLetterA() -> TaskNode {
+        TaskNode(
+            title: "Trace A",
+            prompt: "Trace the letter A with your finger!",
+            activityType: .traceWrite,
+            payload: .traceWrite(
+                TraceWriteContent(
+                    glyphID: "A",
+                    displayLabel: "A",
+                    kind: .uppercaseLetter,
+                    coachLine: "Trace A — two mountain sides, then the belt!"
+                )
+            ),
+            rewardCoins: 4
+        )
+    }
+
+    private static func makeTraceLetterO() -> TaskNode {
+        TaskNode(
+            title: "Trace O",
+            prompt: "Trace the letter O with your finger!",
+            activityType: .traceWrite,
+            payload: .traceWrite(
+                TraceWriteContent(
+                    glyphID: "O",
+                    displayLabel: "O",
+                    kind: .uppercaseLetter,
+                    coachLine: "Trace big O — round like a cookie!"
+                )
+            ),
+            rewardCoins: 4
+        )
+    }
+
+    private static func makeTraceNumber1() -> TaskNode {
+        TaskNode(
+            title: "Trace 1",
+            prompt: "Trace the number 1 with your finger!",
+            activityType: .traceWrite,
+            payload: .traceWrite(
+                TraceWriteContent(
+                    glyphID: "1",
+                    displayLabel: "1",
+                    kind: .number,
+                    coachLine: "Trace number 1 — nice and tall!"
+                )
+            ),
+            rewardCoins: 4
+        )
+    }
+
+    private static func makeTraceNumber3() -> TaskNode {
+        TaskNode(
+            title: "Trace 3",
+            prompt: "Trace the number 3 with your finger!",
+            activityType: .traceWrite,
+            payload: .traceWrite(
+                TraceWriteContent(
+                    glyphID: "3",
+                    displayLabel: "3",
+                    kind: .number,
+                    coachLine: "Trace number 3 — two bumpy curves!"
+                )
+            ),
+            rewardCoins: 4
+        )
+    }
+
+    private static func makeTraceCircle() -> TaskNode {
+        TaskNode(
+            title: "Trace Circle",
+            prompt: "Trace a circle with your finger!",
+            activityType: .traceWrite,
+            payload: .traceWrite(
+                TraceWriteContent(
+                    glyphID: "circle",
+                    displayLabel: "○",
+                    kind: .shape,
+                    coachLine: "Trace a circle — round and round!"
+                )
+            ),
+            rewardCoins: 4
+        )
+    }
+
     private static func makeSpeakDog() -> TaskNode {
         TaskNode(
             title: "Say Dog",
@@ -1129,6 +1228,155 @@ extension StoryTimeContent {
     }()
 }
 
+extension InteractiveStorybookContent {
+    static let moonlightGoodnight: InteractiveStorybookContent = {
+        let moon = StoryHotspot(
+            emoji: "🌙",
+            label: "Moon",
+            speakText: "Hello, sleepy moon!",
+            x: 0.78,
+            y: 0.22
+        )
+        let teddy = StoryHotspot(
+            emoji: "🧸",
+            label: "Teddy",
+            speakText: "Teddy is ready for a hug.",
+            x: 0.28,
+            y: 0.68
+        )
+        let star = StoryHotspot(
+            emoji: "⭐️",
+            label: "Star",
+            speakText: "Twinkle, little star!",
+            x: 0.22,
+            y: 0.24
+        )
+        let owl = StoryHotspot(
+            emoji: "🦉",
+            label: "Owl",
+            speakText: "Whoo — soft night hoot!",
+            x: 0.72,
+            y: 0.62
+        )
+        let sheep = StoryHotspot(
+            emoji: "🐑",
+            label: "Sheep",
+            speakText: "One fluffy sheep floats by.",
+            x: 0.34,
+            y: 0.40
+        )
+        let cloud = StoryHotspot(
+            emoji: "☁️",
+            label: "Cloud",
+            speakText: "A soft pillow cloud.",
+            x: 0.70,
+            y: 0.55
+        )
+        let lamp = StoryHotspot(
+            emoji: "💡",
+            label: "Night light",
+            speakText: "Night light, glow gentle and low.",
+            x: 0.50,
+            y: 0.72
+        )
+
+        return InteractiveStorybookContent(
+            bookTitle: "Moonlight Goodnight",
+            pages: [
+                StorybookPage(
+                    sceneEmoji: "🛏️",
+                    backgroundSymbol: "house.fill",
+                    narration: "The bedroom grew quiet. Time for a cozy night story.",
+                    seekHint: "Tap the moon and teddy!",
+                    hotspots: [moon, teddy]
+                ),
+                StorybookPage(
+                    sceneEmoji: "🪟",
+                    backgroundSymbol: "cloud.moon.fill",
+                    narration: "Outside the window, night friends blinked hello.",
+                    seekHint: "Tap the star and the owl!",
+                    hotspots: [star, owl]
+                ),
+                StorybookPage(
+                    sceneEmoji: "💭",
+                    backgroundSymbol: "cloud.fill",
+                    narration: "Dreams floated like soft clouds across the sky.",
+                    seekHint: "Tap the sheep and the cloud!",
+                    hotspots: [sheep, cloud]
+                ),
+                StorybookPage(
+                    sceneEmoji: "😴",
+                    backgroundSymbol: "moon.zzz.fill",
+                    narration: "Eyes grew heavy. One last glow, then sweet dreams.",
+                    seekHint: "Tap the night light!",
+                    hotspots: [lamp]
+                )
+            ]
+        )
+    }()
+
+    static let twilightForest: InteractiveStorybookContent = {
+        let firefly = StoryHotspot(
+            emoji: "✨",
+            label: "Firefly",
+            speakText: "A tiny firefly winks!",
+            x: 0.30,
+            y: 0.30
+        )
+        let fox = StoryHotspot(
+            emoji: "🦊",
+            label: "Fox",
+            speakText: "Fox tiptoes softly home.",
+            x: 0.68,
+            y: 0.62
+        )
+        let tree = StoryHotspot(
+            emoji: "🌲",
+            label: "Tree",
+            speakText: "Tall trees whisper goodnight.",
+            x: 0.22,
+            y: 0.58
+        )
+        let moon = StoryHotspot(
+            emoji: "🌕",
+            label: "Full moon",
+            speakText: "The full moon watches kindly.",
+            x: 0.76,
+            y: 0.24
+        )
+
+        return InteractiveStorybookContent(
+            bookTitle: "Twilight Forest",
+            pages: [
+                StorybookPage(
+                    sceneEmoji: "🌳",
+                    backgroundSymbol: "leaf.fill",
+                    narration: "The forest turned purple-blue as evening arrived.",
+                    seekHint: "Tap the firefly and the tree!",
+                    hotspots: [firefly, tree]
+                ),
+                StorybookPage(
+                    sceneEmoji: "🦊",
+                    backgroundSymbol: "moon.stars.fill",
+                    narration: "Little Fox found a path lit by moonlight.",
+                    seekHint: "Tap Fox and the full moon!",
+                    hotspots: [fox, moon]
+                ),
+                StorybookPage(
+                    sceneEmoji: "🏡",
+                    backgroundSymbol: "house.fill",
+                    narration: "Home at last — warm, quiet, and ready for sleep.",
+                    seekHint: "Everything found — turn the page!",
+                    hotspots: [],
+                    requireAllHotspots: false
+                )
+            ]
+        )
+    }()
+
+    static let previewMoonlight = moonlightGoodnight
+}
+
 extension MemoryMatchContent {
     static let previewGarden = MemoryMatchContent(
         pairs: [
@@ -1169,6 +1417,14 @@ extension TaskNode {
         prompt: "Listen to the story, then answer a tiny question.",
         activityType: .storyTime,
         payload: .storyTime(.previewFox),
+        rewardCoins: 8
+    )
+
+    static let previewInteractiveStorybook = TaskNode(
+        title: "Moonlight Goodnight",
+        prompt: "Turn the pages and tap the nighttime friends!",
+        activityType: .interactiveStorybook,
+        payload: .interactiveStorybook(.previewMoonlight),
         rewardCoins: 8
     )
 

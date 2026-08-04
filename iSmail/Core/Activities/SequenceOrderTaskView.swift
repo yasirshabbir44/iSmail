@@ -18,6 +18,7 @@ struct SequenceOrderTaskView: View {
     @State private var draggingID: UUID?
     @State private var dragTranslation: CGFloat = 0
     @State private var slotWidth: CGFloat = 96
+    @State private var rowSpacing: CGFloat = 12
     @State private var successTrigger = 0
     @State private var warningTrigger = 0
     @State private var isComplete = false
@@ -26,7 +27,7 @@ struct SequenceOrderTaskView: View {
     @State private var incorrectSlotIndexes: Set<Int> = []
     @State private var generation = 0
 
-    private let spacing: CGFloat = 12
+    private let comfortableSpacing: CGFloat = 12
     private let maxItems = 5
 
     init(
@@ -77,7 +78,7 @@ struct SequenceOrderTaskView: View {
     private var slotsRow: some View {
         GeometryReader { geo in
             let count = max(orderedIDs.count, 1)
-            let adaptiveSpacing = LearningTheme.adaptiveSpacing(for: geo.size.width, comfortable: spacing)
+            let adaptiveSpacing = LearningTheme.adaptiveSpacing(for: geo.size.width, comfortable: comfortableSpacing)
             let computed = LearningTheme.adaptiveTileSide(
                 count: count,
                 availableWidth: geo.size.width,
@@ -93,9 +94,13 @@ struct SequenceOrderTaskView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             .animation(LearningTheme.reorderSpring, value: orderedIDs)
-            .onAppear { slotWidth = computed }
+            .onAppear {
+                slotWidth = computed
+                rowSpacing = adaptiveSpacing
+            }
             .onChange(of: geo.size.width) { _, _ in
                 slotWidth = computed
+                rowSpacing = adaptiveSpacing
             }
         }
         .frame(height: max(100, min(140, slotWidth * 1.25)))
@@ -221,8 +226,8 @@ struct SequenceOrderTaskView: View {
         withAnimation(LearningTheme.reorderSpring) {
             orderedIDs.swapAt(from, target)
             dragTranslation = translation > 0
-                ? translation - (slotWidth + spacing)
-                : translation + (slotWidth + spacing)
+                ? translation - (slotWidth + rowSpacing)
+                : translation + (slotWidth + rowSpacing)
         }
     }
 

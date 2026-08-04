@@ -35,13 +35,13 @@ enum ChapterRepository: Sendable {
         CatalogEntry(title: "Weather Day", subtitle: "Match weather to what you might need", type: .dragAndDrop, coins: 12, stepCount: 3),
         CatalogEntry(title: "Park Adventure", subtitle: "Pack, play, snack — a perfect park day", type: .sequenceOrder, coins: 12, stepCount: 3),
         CatalogEntry(title: "Memory Garden", subtitle: "Flip cards in a blooming memory garden", type: .memoryMatch, coins: 12, stepCount: 3),
-        CatalogEntry(title: "Kind Wishes", subtitle: "Practice kindness before the finale", type: .storyTime, coins: 12, stepCount: 3),
+        CatalogEntry(title: "Kind Wishes", subtitle: "A cozy moonlight storybook before the finale", type: .interactiveStorybook, coins: 14, stepCount: 3),
         CatalogEntry(title: "Star Wish", subtitle: "The big star-wish story — you made it!", type: .storyTime, coins: 20, stepCount: 3),
-        CatalogEntry(title: "Letter A Hunt", subtitle: "Find A and say its friendly sound", type: .letterHunt, coins: 14, stepCount: 3),
-        CatalogEntry(title: "Letter Friends", subtitle: "Hunt B, C & D with phonics tips", type: .letterHunt, coins: 14, stepCount: 3),
+        CatalogEntry(title: "Letter A Hunt", subtitle: "Find A, trace it, and say its sound", type: .letterHunt, coins: 14, stepCount: 3),
+        CatalogEntry(title: "Letter Friends", subtitle: "Hunt letters and practice tracing", type: .letterHunt, coins: 14, stepCount: 3),
         CatalogEntry(title: "Word Whispers", subtitle: "Speak everyday words out loud", type: .speakAndSay, coins: 15, stepCount: 3),
-        CatalogEntry(title: "Count to Three", subtitle: "Count stars, hearts & apples", type: .countTap, coins: 14, stepCount: 3),
-        CatalogEntry(title: "Number Party", subtitle: "Bigger counts and number choices", type: .countTap, coins: 14, stepCount: 3),
+        CatalogEntry(title: "Count to Three", subtitle: "Count stars and trace friendly numbers", type: .countTap, coins: 14, stepCount: 3),
+        CatalogEntry(title: "Number Party", subtitle: "Bigger counts, tracing & number choices", type: .countTap, coins: 14, stepCount: 3),
         CatalogEntry(title: "Math Stars", subtitle: "Count, speak & celebrate Number Town", type: .countTap, coins: 20, stepCount: 3)
     ]
 

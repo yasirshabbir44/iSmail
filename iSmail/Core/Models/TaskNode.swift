@@ -42,10 +42,12 @@ enum ActivityPayload: Hashable, Sendable {
     case tapAndSelect(TapAndSelectContent)
     case sequenceOrder(SequenceOrderContent)
     case storyTime(StoryTimeContent)
+    case interactiveStorybook(InteractiveStorybookContent)
     case memoryMatch(MemoryMatchContent)
     case letterHunt(LetterHuntContent)
     case countTap(CountTapContent)
     case speakAndSay(SpeakAndSayContent)
+    case traceWrite(TraceWriteContent)
 }
 
 // MARK: - Drag & Drop
@@ -221,6 +223,84 @@ struct StoryPage: Identifiable, Hashable, Sendable {
     }
 }
 
+// MARK: - Interactive Storybook
+
+/// Page-turn bedtime story with tap hotspots on each illustrated page.
+struct InteractiveStorybookContent: Hashable, Sendable {
+    var bookTitle: String
+    var pages: [StorybookPage]
+}
+
+struct StorybookPage: Identifiable, Hashable, Sendable {
+    let id: UUID
+    /// Large scene emoji shown as the page illustration centerpiece.
+    var sceneEmoji: String
+    /// Soft SF Symbol atmosphere behind the scene.
+    var backgroundSymbol: String
+    /// Narration caption + TTS for the page.
+    var narration: String
+    /// Coach line while required hotspots remain (e.g. "Tap the sleepy moon!").
+    var seekHint: String
+    /// Interactive tap targets placed on the illustration (normalized 0…1).
+    var hotspots: [StoryHotspot]
+    /// When true, every required hotspot must be found before turning the page.
+    var requireAllHotspots: Bool
+
+    init(
+        id: UUID = UUID(),
+        sceneEmoji: String,
+        backgroundSymbol: String,
+        narration: String,
+        seekHint: String = "Tap the glowing friends!",
+        hotspots: [StoryHotspot] = [],
+        requireAllHotspots: Bool = true
+    ) {
+        self.id = id
+        self.sceneEmoji = sceneEmoji
+        self.backgroundSymbol = backgroundSymbol
+        self.narration = narration
+        self.seekHint = seekHint
+        self.hotspots = hotspots
+        self.requireAllHotspots = requireAllHotspots
+    }
+
+    var requiredHotspotIDs: [UUID] {
+        hotspots.filter(\.isRequired).map(\.id)
+    }
+}
+
+struct StoryHotspot: Identifiable, Hashable, Sendable {
+    let id: UUID
+    var emoji: String
+    var label: String
+    /// Spoken when the child discovers this hotspot.
+    var speakText: String
+    /// Horizontal position on the illustration (0 = leading, 1 = trailing).
+    var x: Double
+    /// Vertical position on the illustration (0 = top, 1 = bottom).
+    var y: Double
+    /// Counts toward unlocking the next page when `requireAllHotspots` is on.
+    var isRequired: Bool
+
+    init(
+        id: UUID = UUID(),
+        emoji: String,
+        label: String,
+        speakText: String,
+        x: Double,
+        y: Double,
+        isRequired: Bool = true
+    ) {
+        self.id = id
+        self.emoji = emoji
+        self.label = label
+        self.speakText = speakText
+        self.x = min(max(x, 0.08), 0.92)
+        self.y = min(max(y, 0.08), 0.92)
+        self.isRequired = isRequired
+    }
+}
+
 // MARK: - Memory Match
 
 struct MemoryMatchContent: Hashable, Sendable {
@@ -304,4 +384,52 @@ struct SpeakAndSayContent: Hashable, Sendable {
     var symbolName: String
     /// Short coaching line, e.g. "Say apple — ap-ple!"
     var coachLine: String
+}
+
+// MARK: - Trace & Write
+
+enum TraceGlyphKind: String, Hashable, Sendable {
+    case uppercaseLetter
+    case lowercaseLetter
+    case number
+    case shape
+
+    var displayName: String {
+        switch self {
+        case .uppercaseLetter: "Uppercase"
+        case .lowercaseLetter: "Lowercase"
+        case .number: "Number"
+        case .shape: "Shape"
+        }
+    }
+}
+
+/// Content for finger-tracing letters, numbers, and shapes.
+struct TraceWriteContent: Hashable, Sendable {
+    /// Glyph key resolved by `TraceGlyphLibrary` (e.g. "A", "a", "3", "circle").
+    var glyphID: String
+    var displayLabel: String
+    var kind: TraceGlyphKind
+    /// Friendly spoken coaching line.
+    var coachLine: String
+    /// Fraction of guide samples that must be visited (0…1).
+    var passCoverage: Double
+    /// Average on-path accuracy that must be met (0…1).
+    var passAccuracy: Double
+
+    init(
+        glyphID: String,
+        displayLabel: String,
+        kind: TraceGlyphKind,
+        coachLine: String,
+        passCoverage: Double = 0.72,
+        passAccuracy: Double = 0.48
+    ) {
+        self.glyphID = glyphID
+        self.displayLabel = displayLabel
+        self.kind = kind
+        self.coachLine = coachLine
+        self.passCoverage = min(max(passCoverage, 0.55), 0.92)
+        self.passAccuracy = min(max(passAccuracy, 0.35), 0.85)
+    }
 }

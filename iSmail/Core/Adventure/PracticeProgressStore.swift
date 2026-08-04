@@ -20,6 +20,8 @@ final class PracticeProgressStore {
     private(set) var numbersPlayed: Int
     private(set) var wordsPlayed: Int
     private(set) var songsPlayed: Int
+    private(set) var storybooksPlayed: Int
+    private(set) var tracePlayed: Int
     private(set) var missionBonusClaimedToday: Bool
 
     private var dayKey: String { "learn.practiceDay.\(profileID.uuidString)" }
@@ -28,6 +30,8 @@ final class PracticeProgressStore {
     private var numbersKey: String { "learn.numbers.\(profileID.uuidString)" }
     private var wordsKey: String { "learn.words.\(profileID.uuidString)" }
     private var songsKey: String { "learn.songs.\(profileID.uuidString)" }
+    private var storybooksKey: String { "learn.storybooks.\(profileID.uuidString)" }
+    private var traceKey: String { "learn.trace.\(profileID.uuidString)" }
     private var bonusKey: String { "learn.missionBonusDay.\(profileID.uuidString)" }
 
     init(
@@ -48,6 +52,8 @@ final class PracticeProgressStore {
             numbersPlayed = defaults.integer(forKey: "learn.numbers.\(profileID.uuidString)")
             wordsPlayed = defaults.integer(forKey: "learn.words.\(profileID.uuidString)")
             songsPlayed = defaults.integer(forKey: "learn.songs.\(profileID.uuidString)")
+            storybooksPlayed = defaults.integer(forKey: "learn.storybooks.\(profileID.uuidString)")
+            tracePlayed = defaults.integer(forKey: "learn.trace.\(profileID.uuidString)")
             missionBonusClaimedToday = defaults.double(forKey: "learn.missionBonusDay.\(profileID.uuidString)") == todayStamp
         } else {
             practiceCountToday = 0
@@ -55,6 +61,8 @@ final class PracticeProgressStore {
             numbersPlayed = 0
             wordsPlayed = 0
             songsPlayed = 0
+            storybooksPlayed = 0
+            tracePlayed = 0
             missionBonusClaimedToday = false
             defaults.set(todayStamp, forKey: "learn.practiceDay.\(profileID.uuidString)")
             defaults.set(0, forKey: "learn.practiceCount.\(profileID.uuidString)")
@@ -62,6 +70,8 @@ final class PracticeProgressStore {
             defaults.set(0, forKey: "learn.numbers.\(profileID.uuidString)")
             defaults.set(0, forKey: "learn.words.\(profileID.uuidString)")
             defaults.set(0, forKey: "learn.songs.\(profileID.uuidString)")
+            defaults.set(0, forKey: "learn.storybooks.\(profileID.uuidString)")
+            defaults.set(0, forKey: "learn.trace.\(profileID.uuidString)")
         }
     }
 
@@ -75,6 +85,8 @@ final class PracticeProgressStore {
         case .numbers: numbersPlayed += 1
         case .words: wordsPlayed += 1
         case .songs: songsPlayed += 1
+        case .storybook: storybooksPlayed += 1
+        case .trace: tracePlayed += 1
         }
         persist()
     }
@@ -98,6 +110,8 @@ final class PracticeProgressStore {
         numbersPlayed = 0
         wordsPlayed = 0
         songsPlayed = 0
+        storybooksPlayed = 0
+        tracePlayed = 0
         missionBonusClaimedToday = false
         defaults.set(today, forKey: dayKey)
         defaults.set(0, forKey: countKey)
@@ -105,6 +119,8 @@ final class PracticeProgressStore {
         defaults.set(0, forKey: numbersKey)
         defaults.set(0, forKey: wordsKey)
         defaults.set(0, forKey: songsKey)
+        defaults.set(0, forKey: storybooksKey)
+        defaults.set(0, forKey: traceKey)
     }
 
     private func persist() {
@@ -113,6 +129,8 @@ final class PracticeProgressStore {
         defaults.set(numbersPlayed, forKey: numbersKey)
         defaults.set(wordsPlayed, forKey: wordsKey)
         defaults.set(songsPlayed, forKey: songsKey)
+        defaults.set(storybooksPlayed, forKey: storybooksKey)
+        defaults.set(tracePlayed, forKey: traceKey)
     }
 
     private static func dayStamp(calendar: Calendar) -> Double {
