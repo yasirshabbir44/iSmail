@@ -76,6 +76,8 @@ struct ActivityRunnerView: View {
             return "Warm slots need a swap — you've got this!"
         case .storyTime:
             return "Listen closely — the glowing answer is a clue!"
+        case .interactiveStorybook:
+            return "Tap the glowing friends on the page!"
         case .memoryMatch:
             return "Remember the glowing pair — you've got this!"
         case .letterHunt:
@@ -84,6 +86,8 @@ struct ActivityRunnerView: View {
             return "Count slowly — the glowing number is a clue!"
         case .speakAndSay:
             return "Tap Hear first, then say the word out loud!"
+        case .traceWrite:
+            return "Start at the glowing dot and follow the dashed line!"
         }
     }
 
@@ -286,7 +290,11 @@ struct ActivityRunnerView: View {
             return max(content.pairs.count, 1)
         case .storyTime(let content):
             return max(content.pages.count, 1)
-        case .tapAndSelect, .sequenceOrder, .letterHunt, .countTap, .speakAndSay:
+        case .interactiveStorybook(let content):
+            // Pages + required hotspots as soft progress units.
+            let hotspotBeats = content.pages.reduce(0) { $0 + $1.requiredHotspotIDs.count }
+            return max(content.pages.count + hotspotBeats, 1)
+        case .tapAndSelect, .sequenceOrder, .letterHunt, .countTap, .speakAndSay, .traceWrite:
             return 1
         }
     }
@@ -298,8 +306,19 @@ struct ActivityRunnerView: View {
 
     // MARK: - Stage
 
+    /// Match / Order use their own DragGestures — a parent idle drag fights them and can freeze drops.
+    private var stageUsesOwnDragGesture: Bool {
+        switch task.activityType {
+        case .dragAndDrop, .sequenceOrder, .traceWrite, .interactiveStorybook:
+            return true
+        default:
+            return false
+        }
+    }
+
+    @ViewBuilder
     private var activityStage: some View {
-        activityBody
+        let stage = activityBody
             .padding(16)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background {
@@ -311,12 +330,20 @@ struct ActivityRunnerView: View {
                     }
                     .shadow(color: tint.opacity(0.12), radius: 14, y: 8)
             }
-            .idleAttentionAnchor(after: 10, scale: 1.04) {
-                frustrationDetector.recordTap()
-            }
             .allowsHitTesting(!frustrationDetector.isCoolingDown && !didComplete)
             .opacity(frustrationDetector.isCoolingDown ? 0.72 : 1.0)
             .animation(.easeInOut(duration: 0.25), value: frustrationDetector.isCoolingDown)
+
+        // Idle touch tracking is applied only when it won't compete with activity drags.
+        // Match / Order still get miss/hit frustration tracking via handleMiss / handleHit.
+        if stageUsesOwnDragGesture {
+            stage
+        } else {
+            stage
+                .idleAttentionAnchor(after: 10, scale: 1.04) {
+                    frustrationDetector.recordTap()
+                }
+        }
     }
 
     @ViewBuilder
@@ -366,6 +393,17 @@ struct ActivityRunnerView: View {
                 },
                 onComplete: handleComplete
             )
+        case .interactiveStorybook(let content):
+            InteractiveStorybookTaskView(
+                content: content,
+                showHint: hintManager.isHintActive,
+                onIncorrectAttempt: handleMiss,
+                onCorrectAttempt: {
+                    handleHit()
+                    stepProgress = min(stepProgress + 1, progressTotal)
+                },
+                onComplete: handleComplete
+            )
         case .memoryMatch(let content):
             MemoryMatchTaskView(
                 content: content,
@@ -401,6 +439,17 @@ struct ActivityRunnerView: View {
             )
         case .speakAndSay(let content):
             SpeakAndSayTaskView(
+                content: content,
+                showHint: hintManager.isHintActive,
+                onIncorrectAttempt: handleMiss,
+                onCorrectAttempt: {
+                    handleHit()
+                    stepProgress = 1
+                },
+                onComplete: handleComplete
+            )
+        case .traceWrite(let content):
+            TraceWriteTaskView(
                 content: content,
                 showHint: hintManager.isHintActive,
                 onIncorrectAttempt: handleMiss,
@@ -578,7 +627,7 @@ struct ActivityRunnerView: View {
         guard autoReadPrompts else { return }
         // These activities speak themselves — avoid double TTS.
         switch task.activityType {
-        case .storyTime, .speakAndSay, .countTap, .letterHunt:
+        case .storyTime, .interactiveStorybook, .speakAndSay, .countTap, .letterHunt, .traceWrite:
             return
         case .dragAndDrop, .tapAndSelect, .sequenceOrder, .memoryMatch:
             break
@@ -666,8 +715,35 @@ struct ActivityRunnerView: View {
     }
 }
 
+#Preview("Interactive Storybook") {
+    NavigationStack {
+        ActivityRunnerView(task: .previewInteractiveStorybook)
+    }
+}
+
 #Preview("Memory Match") {
     NavigationStack {
         ActivityRunnerView(task: .previewMemoryMatch)
+    }
+}
+
+#Preview("Trace Write") {
+    NavigationStack {
+        ActivityRunnerView(
+            task: TaskNode(
+                title: "Trace A",
+                prompt: "Trace the letter A with your finger!",
+                activityType: .traceWrite,
+                payload: .traceWrite(
+                    TraceWriteContent(
+                        glyphID: "A",
+                        displayLabel: "A",
+                        kind: .uppercaseLetter,
+                        coachLine: "Trace A — two mountain sides, then the belt!"
+                    )
+                ),
+                rewardCoins: 4
+            )
+        )
     }
 }

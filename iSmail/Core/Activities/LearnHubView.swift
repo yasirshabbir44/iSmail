@@ -2,7 +2,7 @@
 //  LearnHubView.swift
 //  iSmail
 //
-//  Anytime Learn zone — Letters, Numbers, Words & Songs (LingoKids-style).
+//  Anytime Learn zone — Letters, Numbers, Words, Songs, Storybook & Trace.
 //
 
 import SwiftUI
@@ -103,7 +103,7 @@ struct LearnHubView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 BuddyCoachBanner(
-                    message: "Pick Letters, Numbers, Words, or a Song!",
+                    message: "Pick Letters, Numbers, Words, Songs, or Trace!",
                     mood: .idle,
                     tint: LearningTheme.accent,
                     buddySize: 56

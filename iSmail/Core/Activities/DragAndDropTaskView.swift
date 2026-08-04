@@ -3,6 +3,7 @@
 //  iSmail
 //
 //  Matching engine with magnetic drop zones, forgiving spring reset, hints & audio.
+//  Drag uses the same local-translation pattern as SequenceOrderTaskView (morning routine).
 //
 
 import SwiftUI
@@ -14,7 +15,6 @@ struct DragAndDropTaskView: View {
     var onCorrectAttempt: (() -> Void)?
     var onComplete: (() -> Void)?
 
-    @State private var itemOrigins: [UUID: CGPoint] = [:]
     @State private var itemOffsets: [UUID: CGSize] = [:]
     @State private var draggingItemID: UUID?
     @State private var hoveringZoneID: UUID?
@@ -73,40 +73,48 @@ struct DragAndDropTaskView: View {
     private func dropZonesRow(availableWidth: CGFloat) -> some View {
         let count = content.zones.count
         let spacing = LearningTheme.adaptiveSpacing(for: availableWidth, comfortable: 16)
-        let side = LearningTheme.adaptiveTileSide(
-            count: count,
-            availableWidth: availableWidth,
-            spacing: spacing,
-            ideal: LearningTheme.dropZoneSize
-        )
 
         return Group {
             if count > 3, availableWidth < 400 {
+                // Explicit 2×2 (not LazyVGrid) so every zone measures immediately.
                 let gridSide = LearningTheme.adaptiveTileSide(
                     count: 2,
                     availableWidth: availableWidth,
                     spacing: spacing,
                     ideal: LearningTheme.dropZoneSize
                 )
-                LazyVGrid(
-                    columns: [
-                        GridItem(.flexible(), spacing: spacing),
-                        GridItem(.flexible(), spacing: spacing)
-                    ],
-                    spacing: spacing
-                ) {
-                    ForEach(content.zones) { zone in
-                        dropZoneView(zone, side: gridSide)
-                            .frame(maxWidth: .infinity)
+                VStack(spacing: spacing) {
+                    HStack(spacing: spacing) {
+                        ForEach(Array(content.zones.prefix(2))) { zone in
+                            dropZoneView(zone, side: gridSide)
+                        }
+                    }
+                    HStack(spacing: spacing) {
+                        ForEach(Array(content.zones.dropFirst(2))) { zone in
+                            dropZoneView(zone, side: gridSide)
+                        }
                     }
                 }
+                .frame(maxWidth: .infinity)
             } else {
+                let side = LearningTheme.adaptiveTileSide(
+                    count: count,
+                    availableWidth: availableWidth,
+                    spacing: spacing,
+                    ideal: LearningTheme.dropZoneSize
+                )
                 HStack(spacing: spacing) {
                     ForEach(content.zones) { zone in
                         dropZoneView(zone, side: side)
                     }
                 }
                 .frame(maxWidth: .infinity)
+            }
+        }
+        .onPreferenceChange(ZoneFramePreferenceKey.self) { frames in
+            let merged = Self.mergedFrames(zoneFrames, with: frames)
+            if merged != zoneFrames {
+                zoneFrames = merged
             }
         }
     }
@@ -171,9 +179,6 @@ struct DragAndDropTaskView: View {
                     )
             }
         }
-        .onPreferenceChange(ZoneFramePreferenceKey.self) { frames in
-            zoneFrames.merge(frames, uniquingKeysWith: { $1 })
-        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Drop zone \(zone.label)")
         .accessibilityValue(isFilled ? "Filled with \(matchedItem?.label ?? "")" : "Empty")
@@ -203,6 +208,12 @@ struct DragAndDropTaskView: View {
         }
         .frame(maxWidth: .infinity)
         .frame(minHeight: side + 12)
+        .onPreferenceChange(ItemFramePreferenceKey.self) { frames in
+            let merged = Self.mergedFrames(itemFrames, with: frames)
+            if merged != itemFrames {
+                itemFrames = merged
+            }
+        }
     }
 
     private func draggableChip(_ item: DragItem, side: CGFloat) -> some View {
@@ -237,6 +248,7 @@ struct DragAndDropTaskView: View {
         .scaleEffect(isDragging ? 1.08 : 1.0)
         .offset(offset)
         .zIndex(isDragging ? 100 : 0)
+        // Same local DragGesture pattern as morning routine reorder.
         .highPriorityGesture(dragGesture(for: item))
         .background {
             GeometryReader { geo in
@@ -247,21 +259,16 @@ struct DragAndDropTaskView: View {
                     )
             }
         }
-        .onPreferenceChange(ItemFramePreferenceKey.self) { frames in
-            itemFrames.merge(frames, uniquingKeysWith: { $1 })
-            if itemOrigins[item.id] == nil, let frame = frames[item.id] {
-                itemOrigins[item.id] = CGPoint(x: frame.midX, y: frame.midY)
-            }
-        }
         .accessibilityLabel(item.label)
         .accessibilityHint("Drag to matching zone")
         .accessibilityAddTraits(.isButton)
     }
 
-    // MARK: - Gesture
+    // MARK: - Gesture (morning-routine style)
 
     private func dragGesture(for item: DragItem) -> some Gesture {
-        DragGesture(minimumDistance: 8, coordinateSpace: .named("dndCanvas"))
+        // Local space + low minimumDistance — matches SequenceOrderTaskView.
+        DragGesture(minimumDistance: 4)
             .onChanged { value in
                 guard matchedPairs[item.id] == nil else { return }
                 if draggingItemID == nil {
@@ -269,28 +276,30 @@ struct DragAndDropTaskView: View {
                 }
                 guard draggingItemID == item.id else { return }
                 itemOffsets[item.id] = value.translation
-                updateMagneticHover(finger: value.location)
+                updateMagneticHover(for: item, translation: value.translation)
             }
             .onEnded { value in
                 guard draggingItemID == item.id || draggingItemID == nil else { return }
-                resolveDrop(item: item, at: value.location, translation: value.translation)
+                resolveDrop(item: item, translation: value.translation)
             }
     }
 
-    private func updateMagneticHover(finger: CGPoint) {
-        var bestZone: UUID?
-        var bestDistance = LearningTheme.magneticThreshold
+    private func fingerPoint(for item: DragItem, translation: CGSize) -> CGPoint? {
+        guard let frame = itemFrames[item.id] else { return nil }
+        // itemFrames are resting (pre-offset) frames; finger ≈ resting center + drag.
+        return CGPoint(
+            x: frame.midX + translation.width,
+            y: frame.midY + translation.height
+        )
+    }
 
-        for zone in content.zones where !occupiedZones.contains(zone.id) {
-            guard let frame = zoneFrames[zone.id] else { continue }
-            let center = CGPoint(x: frame.midX, y: frame.midY)
-            let distance = hypot(finger.x - center.x, finger.y - center.y)
-            if distance < bestDistance {
-                bestDistance = distance
-                bestZone = zone.id
-            }
+    private func updateMagneticHover(for item: DragItem, translation: CGSize) {
+        guard let finger = fingerPoint(for: item, translation: translation) else {
+            if hoveringZoneID != nil { hoveringZoneID = nil }
+            return
         }
 
+        let bestZone = nearestOpenZone(to: finger)
         if hoveringZoneID != bestZone {
             withAnimation(LearningTheme.focusFlash) {
                 hoveringZoneID = bestZone
@@ -298,16 +307,7 @@ struct DragAndDropTaskView: View {
         }
     }
 
-    private func currentChipOrigin(for item: DragItem) -> CGPoint? {
-        if let origin = itemOrigins[item.id] {
-            return origin
-        }
-        guard let frame = itemFrames[item.id] else { return nil }
-        let offset = itemOffsets[item.id] ?? .zero
-        return CGPoint(x: frame.midX - offset.width, y: frame.midY - offset.height)
-    }
-
-    private func resolveDrop(item: DragItem, at location: CGPoint, translation: CGSize) {
+    private func resolveDrop(item: DragItem, translation: CGSize) {
         defer {
             draggingItemID = nil
             hoveringZoneID = nil
@@ -321,7 +321,13 @@ struct DragAndDropTaskView: View {
             return
         }
 
-        guard let zoneID = nearestOpenZone(to: location),
+        guard let finger = fingerPoint(for: item, translation: translation) else {
+            // Frames not ready yet — don't punish the child.
+            springHome(itemID: item.id)
+            return
+        }
+
+        guard let zoneID = nearestOpenZone(to: finger),
               let zone = content.zones.first(where: { $0.id == zoneID })
         else {
             registerMiss(itemID: item.id)
@@ -329,11 +335,11 @@ struct DragAndDropTaskView: View {
         }
 
         if zone.matchKey == item.matchKey {
-            if let frame = zoneFrames[zoneID], let origin = currentChipOrigin(for: item) {
+            if let zoneFrame = zoneFrames[zoneID], let itemFrame = itemFrames[item.id] {
                 withAnimation(LearningTheme.forgivingSpring) {
                     itemOffsets[item.id] = CGSize(
-                        width: frame.midX - origin.x,
-                        height: frame.midY - origin.y
+                        width: zoneFrame.midX - itemFrame.midX,
+                        height: zoneFrame.midY - itemFrame.midY
                     )
                 }
             }
@@ -365,18 +371,22 @@ struct DragAndDropTaskView: View {
 
     private func nearestOpenZone(to point: CGPoint) -> UUID? {
         var best: UUID?
-        var bestDistance = LearningTheme.magneticThreshold
+        var bestDistance = CGFloat.greatestFiniteMagnitude
 
         for zone in content.zones where !occupiedZones.contains(zone.id) {
             guard let frame = zoneFrames[zone.id] else { continue }
-            if frame.insetBy(dx: -12, dy: -12).contains(point) {
-                return zone.id
-            }
+
+            // Generous kid-friendly hit pad (zone itself + padding, or near center).
+            let padded = frame.insetBy(dx: -24, dy: -24)
             let center = CGPoint(x: frame.midX, y: frame.midY)
             let distance = hypot(point.x - center.x, point.y - center.y)
-            if distance < bestDistance {
-                bestDistance = distance
-                best = zone.id
+            let catchRadius = max(LearningTheme.magneticThreshold, max(frame.width, frame.height) * 0.65)
+
+            if padded.contains(point) || distance < catchRadius {
+                if distance < bestDistance {
+                    bestDistance = distance
+                    best = zone.id
+                }
             }
         }
         return best
@@ -386,6 +396,25 @@ struct DragAndDropTaskView: View {
         withAnimation(LearningTheme.forgivingSpring) {
             itemOffsets[itemID] = .zero
         }
+    }
+
+    /// Avoid preference → state → layout thrash that freezes drag mid-gesture.
+    private static func mergedFrames(
+        _ current: [UUID: CGRect],
+        with frames: [UUID: CGRect]
+    ) -> [UUID: CGRect] {
+        var next = current
+        for (id, frame) in frames {
+            if let existing = next[id],
+               abs(existing.midX - frame.midX) < 0.5,
+               abs(existing.midY - frame.midY) < 0.5,
+               abs(existing.width - frame.width) < 0.5,
+               abs(existing.height - frame.height) < 0.5 {
+                continue
+            }
+            next[id] = frame
+        }
+        return next
     }
 }
 

@@ -13,6 +13,8 @@ enum ActivityType: String, Codable, CaseIterable, Hashable, Sendable {
     case tapAndSelect
     case sequenceOrder
     case storyTime
+    /// Nighttime page-turn storybook with tap hotspots on each illustration.
+    case interactiveStorybook
     case memoryMatch
     /// Find the target letter among playful letter cards (ABC).
     case letterHunt
@@ -20,6 +22,8 @@ enum ActivityType: String, Codable, CaseIterable, Hashable, Sendable {
     case countTap
     /// Listen, say the word aloud, then confirm (speak practice).
     case speakAndSay
+    /// Trace letters, numbers, and shapes with live stroke accuracy feedback.
+    case traceWrite
 
     var displayName: String {
         switch self {
@@ -27,10 +31,12 @@ enum ActivityType: String, Codable, CaseIterable, Hashable, Sendable {
         case .tapAndSelect: "Choose"
         case .sequenceOrder: "Order"
         case .storyTime: "Story"
+        case .interactiveStorybook: "Storybook"
         case .memoryMatch: "Memory"
         case .letterHunt: "Letters"
         case .countTap: "Numbers"
         case .speakAndSay: "Speak"
+        case .traceWrite: "Trace"
         }
     }
 
@@ -40,10 +46,12 @@ enum ActivityType: String, Codable, CaseIterable, Hashable, Sendable {
         case .tapAndSelect: "hand.tap.fill"
         case .sequenceOrder: "arrow.left.arrow.right"
         case .storyTime: "book.fill"
+        case .interactiveStorybook: "moon.stars.fill"
         case .memoryMatch: "rectangle.on.rectangle.angled"
         case .letterHunt: "textformat"
         case .countTap: "number"
         case .speakAndSay: "mouth.fill"
+        case .traceWrite: "pencil.and.outline"
         }
     }
 
@@ -54,10 +62,12 @@ enum ActivityType: String, Codable, CaseIterable, Hashable, Sendable {
         case .tapAndSelect: "Focus"
         case .sequenceOrder: "Sequencing"
         case .storyTime: "Listening"
+        case .interactiveStorybook: "Interactive reading"
         case .memoryMatch: "Working memory"
         case .letterHunt: "Phonics"
         case .countTap: "Counting"
         case .speakAndSay: "Speaking"
+        case .traceWrite: "Writing"
         }
     }
 }

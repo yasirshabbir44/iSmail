@@ -329,7 +329,7 @@ struct ContentView: View {
 
     private func playZones(narrow: Bool) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionTitle("Learn anytime", subtitle: "ABC, counting, words & songs — like a mini school")
+            sectionTitle("Learn anytime", subtitle: "ABC, counting, words, songs, storybooks & tracing")
 
             LazyVGrid(
                 columns: [GridItem(.flexible(), spacing: narrow ? 10 : 14), GridItem(.flexible(), spacing: narrow ? 10 : 14)],
@@ -346,6 +346,12 @@ struct ContentView: View {
                 }
                 bonusButton(title: "Songs", symbol: "music.note.list", tint: Color(red: 0.55, green: 0.40, blue: 0.78)) {
                     openLearnHub(.songs)
+                }
+                bonusButton(title: "Storybook", symbol: "moon.stars.fill", tint: Color(red: 0.28, green: 0.32, blue: 0.72)) {
+                    openLearnHub(.storybook)
+                }
+                bonusButton(title: "Trace", symbol: "pencil.and.outline", tint: Color(red: 0.95, green: 0.55, blue: 0.25)) {
+                    openLearnHub(.trace)
                 }
             }
 

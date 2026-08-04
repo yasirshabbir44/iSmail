@@ -128,6 +128,8 @@ struct ParentProgressView: View {
             skillRow("Numbers (123)", practice.numbersPlayed, Color(red: 0.95, green: 0.45, blue: 0.55))
             skillRow("Speaking words", practice.wordsPlayed, Color(red: 0.35, green: 0.72, blue: 0.55))
             skillRow("Songs", practice.songsPlayed, Color(red: 0.55, green: 0.40, blue: 0.78))
+            skillRow("Storybook", practice.storybooksPlayed, Color(red: 0.28, green: 0.32, blue: 0.72))
+            skillRow("Trace & write", practice.tracePlayed, Color(red: 0.95, green: 0.55, blue: 0.25))
 
             if practice.practiceCountToday == 0 {
                 Text("No practice yet today — open Learn on the home map.")
@@ -148,7 +150,7 @@ struct ParentProgressView: View {
                 .foregroundStyle(LearningTheme.ink)
 
             tipLine("Short 3-step chapters keep focus friendly.")
-            tipLine("Learn Hub lets kids practice ABC, counting & words anytime.")
+            tipLine("Learn Hub includes ABC, counting, words, songs & tracing.")
             tipLine("Buddy hints appear after misses — soft, never harsh.")
             tipLine("Calm Corner is always available when energy runs high.")
         }

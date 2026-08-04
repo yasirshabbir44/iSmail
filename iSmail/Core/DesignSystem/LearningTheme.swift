@@ -86,10 +86,12 @@ enum LearningTheme {
         case .tapAndSelect: return coral
         case .sequenceOrder: return Color(red: 0.42, green: 0.58, blue: 0.95)
         case .storyTime: return Color(red: 0.55, green: 0.40, blue: 0.78)
+        case .interactiveStorybook: return Color(red: 0.28, green: 0.32, blue: 0.72)
         case .memoryMatch: return Color(red: 0.98, green: 0.55, blue: 0.20)
         case .letterHunt: return Color(red: 0.20, green: 0.55, blue: 0.90)
         case .countTap: return Color(red: 0.95, green: 0.45, blue: 0.55)
         case .speakAndSay: return Color(red: 0.35, green: 0.72, blue: 0.55)
+        case .traceWrite: return Color(red: 0.95, green: 0.55, blue: 0.25)
         }
     }
 

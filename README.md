@@ -13,11 +13,13 @@ A SwiftUI learning app for kids — short lessons on a winding adventure map, wi
   - **Choose** — tap and select
   - **Order** — sequence sorting
   - **Story** — listen-and-respond story time
+  - **Storybook** — nighttime page-turn stories with tap hotspots
   - **Memory** — flip-card working memory
   - **Letters** — ABC letter hunt with phonics tips
   - **Numbers** — count icons, then tap the right number
   - **Speak** — listen, say the word, confirm
-- **Learn anytime** — Letters, Numbers, Words & Songs practice outside the daily path
+  - **Trace** — real-time stroke tracking for letters, numbers & shapes with visual + audio accuracy feedback
+- **Learn anytime** — Letters, Numbers, Words, Songs, Storybook & Trace practice outside the daily path
 - **Daily mission** — finish today’s chapter + one practice round for bonus stars
 - **Parent corner** — simple progress snapshot (chapters, streak, today’s practice)
 - **Age-aware lessons** — little / explorer / adventurer bands tailor choice counts and complexity
