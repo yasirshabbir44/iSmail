@@ -68,10 +68,26 @@ enum StickerCatalog {
         StickerBadge(
             id: "world_champ",
             title: "World Champ",
-            subtitle: "Cleared the whole path",
+            subtitle: "Cleared the first 15 chapters",
             symbolName: "trophy.fill",
             tintRed: 0.55, tintGreen: 0.40, tintBlue: 0.78,
             requiredCompletions: 15
+        ),
+        StickerBadge(
+            id: "abc_star",
+            title: "ABC Star",
+            subtitle: "Letter Land explorer",
+            symbolName: "textformat",
+            tintRed: 0.20, tintGreen: 0.55, tintBlue: 0.90,
+            requiredCompletions: 18
+        ),
+        StickerBadge(
+            id: "number_hero",
+            title: "Number Hero",
+            subtitle: "Finished the whole path",
+            symbolName: "number.circle.fill",
+            tintRed: 0.95, tintGreen: 0.45, tintBlue: 0.55,
+            requiredCompletions: 21
         )
     ]
 }

@@ -49,7 +49,7 @@ enum CurriculumCatalog: Sendable {
             ?? fallbackTask(for: chapter.type)
     }
 
-    // MARK: - Blueprints (day 1…15)
+    // MARK: - Blueprints (day 1…21)
 
     private struct Blueprint {
         var subtitle: String
@@ -74,6 +74,12 @@ enum CurriculumCatalog: Sendable {
         case 13: return memoryGardenChapter
         case 14: return kindWishChapter
         case 15: return starWishFinale
+        case 16: return letterAHuntChapter
+        case 17: return letterFriendsChapter
+        case 18: return wordWhispersChapter
+        case 19: return countToThreeChapter
+        case 20: return numberPartyChapter
+        case 21: return mathStarsFinale
         default: return animalSoundsChapter
         }
     }
@@ -92,6 +98,12 @@ enum CurriculumCatalog: Sendable {
             break
         case .memoryMatch(let content):
             copy.payload = .memoryMatch(content.limited(to: band.memoryPairs))
+        case .letterHunt(let content):
+            copy.payload = .letterHunt(content.limited(to: band.choiceCount))
+        case .countTap(let content):
+            copy.payload = .countTap(content.limited(to: band.choiceCount))
+        case .speakAndSay:
+            break
         }
         return copy
     }
@@ -103,6 +115,9 @@ enum CurriculumCatalog: Sendable {
         case .sequenceOrder: return makeMorningSteps()
         case .storyTime: return makeBraveFoxStory()
         case .memoryMatch: return makeMemoryGarden()
+        case .letterHunt: return makeLetterHuntA()
+        case .countTap: return makeCountStars()
+        case .speakAndSay: return makeSpeakApple()
         }
     }
 
@@ -292,6 +307,82 @@ enum CurriculumCatalog: Sendable {
                 LessonStep(label: "Warm-up", task: makeFindStar()),
                 LessonStep(label: "Memory", task: makeMemoryGarden()),
                 LessonStep(label: "Story", task: makeStarWishStory())
+            ]
+        )
+    }
+
+    // MARK: - World 6: Letter Land
+
+    private static var letterAHuntChapter: Blueprint {
+        Blueprint(
+            subtitle: "Find A and say its friendly sound",
+            skillTag: "Phonics",
+            steps: [
+                LessonStep(label: "Warm-up", task: makeLetterHuntA()),
+                LessonStep(label: "Speak", task: makeSpeakApple()),
+                LessonStep(label: "Hunt", task: makeLetterHuntB())
+            ]
+        )
+    }
+
+    private static var letterFriendsChapter: Blueprint {
+        Blueprint(
+            subtitle: "Hunt B, C & D with phonics tips",
+            skillTag: "ABC",
+            steps: [
+                LessonStep(label: "Warm-up", task: makeLetterHuntB()),
+                LessonStep(label: "Hunt", task: makeLetterHuntC()),
+                LessonStep(label: "Speak", task: makeSpeakDog())
+            ]
+        )
+    }
+
+    private static var wordWhispersChapter: Blueprint {
+        Blueprint(
+            subtitle: "Speak everyday words out loud",
+            skillTag: "Speaking",
+            steps: [
+                LessonStep(label: "Warm-up", task: makeSpeakApple()),
+                LessonStep(label: "Speak", task: makeSpeakDog()),
+                LessonStep(label: "Hunt", task: makeLetterHuntA())
+            ]
+        )
+    }
+
+    // MARK: - World 7: Number Town
+
+    private static var countToThreeChapter: Blueprint {
+        Blueprint(
+            subtitle: "Count stars, hearts & apples",
+            skillTag: "Counting",
+            steps: [
+                LessonStep(label: "Warm-up", task: makeCountStars()),
+                LessonStep(label: "Count", task: makeCountHearts()),
+                LessonStep(label: "Speak", task: makeSpeakSun())
+            ]
+        )
+    }
+
+    private static var numberPartyChapter: Blueprint {
+        Blueprint(
+            subtitle: "Bigger counts and number choices",
+            skillTag: "Numbers",
+            steps: [
+                LessonStep(label: "Warm-up", task: makeCountApples()),
+                LessonStep(label: "Count", task: makeCountStars()),
+                LessonStep(label: "Choose", task: makePickApple())
+            ]
+        )
+    }
+
+    private static var mathStarsFinale: Blueprint {
+        Blueprint(
+            subtitle: "Count, speak & celebrate Number Town",
+            skillTag: "Finale",
+            steps: [
+                LessonStep(label: "Warm-up", task: makeCountHearts()),
+                LessonStep(label: "Speak", task: makeSpeakSun()),
+                LessonStep(label: "Count", task: makeCountApples())
             ]
         )
     }
@@ -820,6 +911,155 @@ enum CurriculumCatalog: Sendable {
                 )
             ),
             rewardCoins: 4
+        )
+    }
+
+    // MARK: - Letter / Number / Speak factories
+
+    private static func makeLetterHuntA() -> TaskNode {
+        TaskNode(
+            title: "Find A",
+            prompt: "Find the letter A!",
+            activityType: .letterHunt,
+            payload: .letterHunt(
+                LetterHuntContent(
+                    targetLetter: "A",
+                    choices: ["A", "B", "C", "D"],
+                    soundHint: "A says ah — like apple!"
+                )
+            ),
+            rewardCoins: 3
+        )
+    }
+
+    private static func makeLetterHuntB() -> TaskNode {
+        TaskNode(
+            title: "Find B",
+            prompt: "Find the letter B!",
+            activityType: .letterHunt,
+            payload: .letterHunt(
+                LetterHuntContent(
+                    targetLetter: "B",
+                    choices: ["B", "A", "D", "C"],
+                    soundHint: "B says buh — like ball!"
+                )
+            ),
+            rewardCoins: 3
+        )
+    }
+
+    private static func makeLetterHuntC() -> TaskNode {
+        TaskNode(
+            title: "Find C",
+            prompt: "Find the letter C!",
+            activityType: .letterHunt,
+            payload: .letterHunt(
+                LetterHuntContent(
+                    targetLetter: "C",
+                    choices: ["C", "A", "B", "E"],
+                    soundHint: "C says cuh — like cat!"
+                )
+            ),
+            rewardCoins: 3
+        )
+    }
+
+    private static func makeCountStars() -> TaskNode {
+        TaskNode(
+            title: "Count Stars",
+            prompt: "How many stars do you see?",
+            activityType: .countTap,
+            payload: .countTap(
+                CountTapContent(
+                    itemCount: 3,
+                    symbolName: "star.fill",
+                    itemLabel: "stars",
+                    numberChoices: [2, 3, 4, 5]
+                )
+            ),
+            rewardCoins: 3
+        )
+    }
+
+    private static func makeCountHearts() -> TaskNode {
+        TaskNode(
+            title: "Count Hearts",
+            prompt: "How many hearts do you see?",
+            activityType: .countTap,
+            payload: .countTap(
+                CountTapContent(
+                    itemCount: 2,
+                    symbolName: "heart.fill",
+                    itemLabel: "hearts",
+                    numberChoices: [1, 2, 3, 4]
+                )
+            ),
+            rewardCoins: 3
+        )
+    }
+
+    private static func makeCountApples() -> TaskNode {
+        TaskNode(
+            title: "Count Apples",
+            prompt: "How many apples do you see?",
+            activityType: .countTap,
+            payload: .countTap(
+                CountTapContent(
+                    itemCount: 4,
+                    symbolName: "apple.logo",
+                    itemLabel: "apples",
+                    numberChoices: [2, 3, 4, 5]
+                )
+            ),
+            rewardCoins: 3
+        )
+    }
+
+    private static func makeSpeakApple() -> TaskNode {
+        TaskNode(
+            title: "Say Apple",
+            prompt: "Listen, then say apple!",
+            activityType: .speakAndSay,
+            payload: .speakAndSay(
+                SpeakAndSayContent(
+                    word: "Apple",
+                    symbolName: "apple.logo",
+                    coachLine: "Say apple — ap-ple!"
+                )
+            ),
+            rewardCoins: 3
+        )
+    }
+
+    private static func makeSpeakDog() -> TaskNode {
+        TaskNode(
+            title: "Say Dog",
+            prompt: "Listen, then say dog!",
+            activityType: .speakAndSay,
+            payload: .speakAndSay(
+                SpeakAndSayContent(
+                    word: "Dog",
+                    symbolName: "dog.fill",
+                    coachLine: "Say dog — nice and clear!"
+                )
+            ),
+            rewardCoins: 3
+        )
+    }
+
+    private static func makeSpeakSun() -> TaskNode {
+        TaskNode(
+            title: "Say Sun",
+            prompt: "Listen, then say sun!",
+            activityType: .speakAndSay,
+            payload: .speakAndSay(
+                SpeakAndSayContent(
+                    word: "Sun",
+                    symbolName: "sun.max.fill",
+                    coachLine: "Say sun — bright and warm!"
+                )
+            ),
+            rewardCoins: 3
         )
     }
 }

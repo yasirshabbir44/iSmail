@@ -113,13 +113,12 @@ struct BuddyCoachView: View {
                 .fill(LearningTheme.ink.opacity(0.75))
                 .frame(width: size * 0.22, height: size * 0.06)
         case .cheering, .celebrating:
-            // Open happy smile
+            // Open happy smile (bottom arc; do not rotate — that flips it into a frown)
             Circle()
-                .trim(from: 0.05, to: 0.45)
+                .trim(from: 0.10, to: 0.40)
                 .stroke(LearningTheme.ink.opacity(0.8), style: StrokeStyle(lineWidth: size * 0.05, lineCap: .round))
                 .frame(width: size * 0.28, height: size * 0.28)
-                .rotationEffect(.degrees(180))
-                .offset(y: -size * 0.02)
+                .offset(y: -size * 0.06)
         }
     }
 
@@ -153,8 +152,10 @@ struct CoachBubble: View {
             .font(.system(.body, design: .rounded).weight(.bold))
             .foregroundStyle(LearningTheme.ink)
             .multilineTextAlignment(.leading)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
+            .fixedSize(horizontal: false, vertical: true)
+            .minimumScaleFactor(0.85)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
@@ -178,9 +179,12 @@ struct BuddyCoachBanner: View {
     var body: some View {
         HStack(alignment: .center, spacing: buddySize < 56 ? 8 : 12) {
             BuddyCoachView(mood: mood, size: buddySize)
+                .fixedSize()
 
             CoachBubble(message: message, tint: tint)
+                .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .animation(LearningTheme.forgivingSpring, value: message)
         .animation(LearningTheme.forgivingSpring, value: mood)
     }
@@ -204,14 +208,21 @@ struct LessonProgressPips: View {
     var tint: Color = LearningTheme.accent
 
     var body: some View {
-        HStack(spacing: 8) {
-            ForEach(0..<max(total, 1), id: \.self) { index in
+        let count = max(total, 1)
+        // Dense campaigns (21 chapters) must flex — fixed pip widths blew past SE/iPhone width
+        // and expanded the entire home ScrollView past the trailing edge.
+        let spacing: CGFloat = count > 12 ? 3 : (count > 8 ? 5 : 8)
+
+        HStack(spacing: spacing) {
+            ForEach(0..<count, id: \.self) { index in
                 Capsule(style: .continuous)
                     .fill(index < completed ? tint : LearningTheme.slot)
-                    .frame(width: index < completed ? 28 : 14, height: 10)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 10)
                     .animation(LearningTheme.forgivingSpring, value: completed)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Progress \(completed) of \(total)")
     }

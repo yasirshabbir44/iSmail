@@ -18,12 +18,32 @@ enum LearningTheme {
     static let compactTileFloor: CGFloat = 56
     /// Readable content width on iPad / landscape.
     static let contentMaxWidth: CGFloat = 720
+    /// Shared horizontal inset for scroll screens.
+    static let screenPaddingH: CGFloat = 20
+    static let screenPaddingHNarrow: CGFloat = 16
+    /// Shared internal card padding.
+    static let cardPadding: CGFloat = 16
+    static let cardPaddingNarrow: CGFloat = 14
+    /// Width below which layouts should compress (SE / mini).
+    static let narrowWidth: CGFloat = 380
 
     // MARK: Shape
 
     static let cornerRadius: CGFloat = 24
     static let chipCornerRadius: CGFloat = 20
     static let borderWidth: CGFloat = 3
+
+    static func screenPadding(for width: CGFloat) -> CGFloat {
+        width < narrowWidth ? screenPaddingHNarrow : screenPaddingH
+    }
+
+    static func cardPadding(for width: CGFloat) -> CGFloat {
+        width < narrowWidth ? cardPaddingNarrow : cardPadding
+    }
+
+    static func isNarrow(_ width: CGFloat) -> Bool {
+        width < narrowWidth
+    }
 
     // MARK: Motion
 
@@ -67,6 +87,9 @@ enum LearningTheme {
         case .sequenceOrder: return Color(red: 0.42, green: 0.58, blue: 0.95)
         case .storyTime: return Color(red: 0.55, green: 0.40, blue: 0.78)
         case .memoryMatch: return Color(red: 0.98, green: 0.55, blue: 0.20)
+        case .letterHunt: return Color(red: 0.20, green: 0.55, blue: 0.90)
+        case .countTap: return Color(red: 0.95, green: 0.45, blue: 0.55)
+        case .speakAndSay: return Color(red: 0.35, green: 0.72, blue: 0.55)
         }
     }
 

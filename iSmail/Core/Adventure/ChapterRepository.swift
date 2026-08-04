@@ -11,7 +11,7 @@ import Foundation
 /// Builds the rolling daily chapter path and resolves playable `ChapterLesson` content.
 enum ChapterRepository: Sendable {
     /// Default campaign length shown on the winding map.
-    nonisolated static let defaultChapterCount = 15
+    nonisolated static let defaultChapterCount = 21
 
     private struct CatalogEntry {
         let title: String
@@ -36,7 +36,13 @@ enum ChapterRepository: Sendable {
         CatalogEntry(title: "Park Adventure", subtitle: "Pack, play, snack — a perfect park day", type: .sequenceOrder, coins: 12, stepCount: 3),
         CatalogEntry(title: "Memory Garden", subtitle: "Flip cards in a blooming memory garden", type: .memoryMatch, coins: 12, stepCount: 3),
         CatalogEntry(title: "Kind Wishes", subtitle: "Practice kindness before the finale", type: .storyTime, coins: 12, stepCount: 3),
-        CatalogEntry(title: "Star Wish", subtitle: "The big star-wish story — you made it!", type: .storyTime, coins: 20, stepCount: 3)
+        CatalogEntry(title: "Star Wish", subtitle: "The big star-wish story — you made it!", type: .storyTime, coins: 20, stepCount: 3),
+        CatalogEntry(title: "Letter A Hunt", subtitle: "Find A and say its friendly sound", type: .letterHunt, coins: 14, stepCount: 3),
+        CatalogEntry(title: "Letter Friends", subtitle: "Hunt B, C & D with phonics tips", type: .letterHunt, coins: 14, stepCount: 3),
+        CatalogEntry(title: "Word Whispers", subtitle: "Speak everyday words out loud", type: .speakAndSay, coins: 15, stepCount: 3),
+        CatalogEntry(title: "Count to Three", subtitle: "Count stars, hearts & apples", type: .countTap, coins: 14, stepCount: 3),
+        CatalogEntry(title: "Number Party", subtitle: "Bigger counts and number choices", type: .countTap, coins: 14, stepCount: 3),
+        CatalogEntry(title: "Math Stars", subtitle: "Count, speak & celebrate Number Town", type: .countTap, coins: 20, stepCount: 3)
     ]
 
     /// Generates `count` chapters starting at local midnight of `startDate`.

@@ -107,7 +107,8 @@ struct FocusPilotView: View {
             // Soft distant hills
             Ellipse()
                 .fill(LearningTheme.success.opacity(0.22))
-                .frame(width: 520, height: 140)
+                .frame(maxWidth: .infinity)
+                .frame(height: 140)
                 .offset(y: 280)
                 .allowsHitTesting(false)
         }
@@ -127,8 +128,7 @@ struct FocusPilotView: View {
                     .foregroundStyle(LearningTheme.ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
-
-                Spacer(minLength: 0)
+                    .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
 
                 HStack(spacing: 6) {
                     Image(systemName: "star.fill")

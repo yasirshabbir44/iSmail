@@ -87,8 +87,7 @@ struct BubblePopView: View {
                     .foregroundStyle(LearningTheme.ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
-
-                Spacer(minLength: 0)
+                    .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
 
                 HStack(spacing: 6) {
                     Text("🪙")

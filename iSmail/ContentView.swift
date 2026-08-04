@@ -13,12 +13,15 @@ struct ContentView: View {
     @Environment(AppSession.self) private var session
 
     @State private var progress: DailyProgressManager
+    @State private var practiceStore: PracticeProgressStore
     @State private var selectedLesson: ChapterLesson?
     @State private var streakDays: Int = 3
     @State private var showDailySpin = false
     @State private var bonusDestination: BonusDestination?
     @State private var newlyUnlockedSticker: StickerBadge?
     @State private var stickerStore: StickerBookStore
+    @State private var completedChapterToday = false
+    @State private var learnLaunchCategory: LearnPracticeCategory?
 
     private let mapSpring = Animation.spring(response: 0.4, dampingFraction: 0.7)
 
@@ -32,10 +35,32 @@ struct ContentView: View {
         "adventure.streak.\(profile.id.uuidString)"
     }
 
+    private var chapterDoneTodayKey: String {
+        "adventure.chapterDoneDay.\(profile.id.uuidString)"
+    }
+
+    private var missionChapter: ChapterNode? {
+        if let today = progress.todaysChapter, !today.isCompleted {
+            return today
+        }
+        return progress.currentFocusChapter ?? progress.todaysChapter
+    }
+
+    private var missionChapterDone: Bool {
+        if completedChapterToday { return true }
+        if let today = progress.todaysChapter {
+            return today.isCompleted
+        }
+        return progress.currentFocusChapter == nil && completedCount > 0
+    }
+
     init(profile: ChildProfile) {
         self.profile = profile
         _progress = State(
             initialValue: DailyProgressManager(profileID: profile.id)
+        )
+        _practiceStore = State(
+            initialValue: PracticeProgressStore(profileID: profile.id)
         )
         _stickerStore = State(
             initialValue: StickerBookStore(profileID: profile.id)
@@ -45,7 +70,8 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             GeometryReader { geo in
-                let isNarrow = geo.size.width < 380
+                let isNarrow = LearningTheme.isNarrow(geo.size.width)
+                let hPad = LearningTheme.screenPadding(for: geo.size.width)
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: isNarrow ? 18 : 24) {
@@ -63,7 +89,16 @@ struct ContentView: View {
 
                         pathIntro(narrow: isNarrow)
 
-                        worldsStrip(narrow: isNarrow)
+                        DailyMissionCard(
+                            chapterTitle: missionChapter?.title,
+                            chapterDone: missionChapterDone,
+                            practiceDone: practiceStore.hasPracticedToday,
+                            bonusClaimed: practiceStore.missionBonusClaimedToday,
+                            onPlayChapter: { openMissionChapter() },
+                            onOpenLearn: { openLearnHub() }
+                        )
+
+                        worldsStrip(narrow: isNarrow, contentWidth: geo.size.width - hPad * 2)
 
                         playZones(narrow: isNarrow)
 
@@ -80,11 +115,11 @@ struct ContentView: View {
                             )
                         }
                     }
-                    .padding(.horizontal, isNarrow ? 16 : 20)
+                    .padding(.horizontal, hPad)
                     .padding(.top, 8)
                     .padding(.bottom, 36)
-                    .frame(maxWidth: LearningTheme.contentMaxWidth)
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: LearningTheme.contentMaxWidth, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .scrollIndicators(.hidden)
                 .background(PlayWorldBackground())
@@ -95,8 +130,10 @@ struct ContentView: View {
                             profile.totalCoins = min(profile.totalCoins + max(0, coins), 9_999)
                             progress.markCompleted(id: lesson.id)
                         }
+                        markChapterDoneToday()
                         bumpStreakIfNeeded()
                         checkStickers()
+                        claimMissionBonusIfNeeded()
                     }
                 }
                 .navigationDestination(item: $bonusDestination) { destination in
@@ -117,6 +154,7 @@ struct ContentView: View {
             if stored > 0 {
                 streakDays = stored
             }
+            refreshChapterDoneToday()
             progress.refreshSpinClaimIfNeeded()
             stickerStore.sync(completedCount: completedCount)
             if !progress.hasClaimedDailySpin {
@@ -133,23 +171,25 @@ struct ContentView: View {
 
     private func pathIntro(narrow: Bool) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Today's lesson")
-                    .font(.system(.title2, design: .rounded).weight(.heavy))
-                    .foregroundStyle(LearningTheme.ink)
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text("Today's lesson")
+                        .font(.system(.title2, design: .rounded).weight(.heavy))
+                        .foregroundStyle(LearningTheme.ink)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
 
-                Spacer(minLength: 8)
+                    Spacer(minLength: 8)
 
-                Text(ageBand.friendlyLabel)
-                    .font(.system(.caption, design: .rounded).weight(.heavy))
-                    .foregroundStyle(LearningTheme.accent)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background {
-                        Capsule(style: .continuous)
-                            .fill(LearningTheme.accentSoft)
-                    }
-                    .accessibilityLabel("Difficulty \(ageBand.friendlyLabel)")
+                    ageBadge
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Today's lesson")
+                        .font(.system(.title2, design: .rounded).weight(.heavy))
+                        .foregroundStyle(LearningTheme.ink)
+                    ageBadge
+                }
             }
 
             Text(pathSubtitle)
@@ -164,7 +204,7 @@ struct ContentView: View {
             )
             .padding(.top, 4)
         }
-        .padding(narrow ? 14 : 16)
+        .padding(narrow ? LearningTheme.cardPaddingNarrow : LearningTheme.cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
@@ -178,24 +218,43 @@ struct ContentView: View {
         .animation(mapSpring, value: completedCount)
     }
 
+    private var ageBadge: some View {
+        Text(ageBand.friendlyLabel)
+            .font(.system(.caption, design: .rounded).weight(.heavy))
+            .foregroundStyle(LearningTheme.accent)
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background {
+                Capsule(style: .continuous)
+                    .fill(LearningTheme.accentSoft)
+            }
+            .accessibilityLabel("Difficulty \(ageBand.friendlyLabel)")
+    }
+
     // MARK: - Worlds strip
 
-    private func worldsStrip(narrow: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+    private func worldsStrip(narrow: Bool, contentWidth: CGFloat) -> some View {
+        let cardWidth = min(narrow ? 168 : 180, max(148, contentWidth * 0.72))
+
+        return VStack(alignment: .leading, spacing: 12) {
             sectionTitle("Learning worlds", subtitle: "Chapter packs — finish one to unlock the next")
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: narrow ? 10 : 12) {
                     ForEach(LearningWorld.allCases, id: \.self) { world in
-                        worldCard(world, narrow: narrow)
+                        worldCard(world, cardWidth: cardWidth)
                     }
                 }
                 .padding(.vertical, 2)
+                .padding(.trailing, 8)
             }
+            .scrollClipDisabled()
         }
     }
 
-    private func worldCard(_ world: LearningWorld, narrow: Bool) -> some View {
+    private func worldCard(_ world: LearningWorld, cardWidth: CGFloat) -> some View {
         let chapters = progress.chapters.filter { world.dayRange.contains($0.dayNumber) }
         let done = chapters.filter(\.isCompleted).count
         let total = max(chapters.count, 1)
@@ -248,7 +307,7 @@ struct ContentView: View {
                 .foregroundStyle(LearningTheme.mutedInk)
         }
         .padding(14)
-        .frame(width: narrow ? 168 : 180, alignment: .leading)
+        .frame(width: cardWidth, alignment: .leading)
         .background {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(LearningTheme.surface.opacity(0.94))
@@ -266,21 +325,30 @@ struct ContentView: View {
         .accessibilityLabel("\(world.title), \(done) of \(total) chapters complete")
     }
 
-    private var chapterPathHeader: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text("Chapter path")
-                .font(.system(.title3, design: .rounded).weight(.heavy))
-                .foregroundStyle(LearningTheme.ink)
-            Text("Each chapter has 3 short plays — warm-up, game, wrap-up")
-                .font(.system(.caption, design: .rounded).weight(.semibold))
-                .foregroundStyle(LearningTheme.mutedInk)
-        }
-    }
-
     // MARK: - Play zones
 
     private func playZones(narrow: Bool) -> some View {
         VStack(alignment: .leading, spacing: 14) {
+            sectionTitle("Learn anytime", subtitle: "ABC, counting, words & songs — like a mini school")
+
+            LazyVGrid(
+                columns: [GridItem(.flexible(), spacing: narrow ? 10 : 14), GridItem(.flexible(), spacing: narrow ? 10 : 14)],
+                spacing: narrow ? 10 : 14
+            ) {
+                bonusButton(title: "Letters", symbol: "textformat", tint: Color(red: 0.20, green: 0.55, blue: 0.90)) {
+                    openLearnHub(.letters)
+                }
+                bonusButton(title: "Numbers", symbol: "number.circle.fill", tint: Color(red: 0.95, green: 0.45, blue: 0.55)) {
+                    openLearnHub(.numbers)
+                }
+                bonusButton(title: "Words", symbol: "mouth.fill", tint: Color(red: 0.35, green: 0.72, blue: 0.55)) {
+                    openLearnHub(.words)
+                }
+                bonusButton(title: "Songs", symbol: "music.note.list", tint: Color(red: 0.55, green: 0.40, blue: 0.78)) {
+                    openLearnHub(.songs)
+                }
+            }
+
             sectionTitle("Feel good", subtitle: "Calm, dress up & celebrate")
 
             LazyVGrid(
@@ -300,6 +368,9 @@ struct ContentView: View {
                     withAnimation(LearningTheme.forgivingSpring) {
                         showDailySpin = true
                     }
+                }
+                bonusButton(title: "Parents", symbol: "figure.and.child.holdinghands", tint: LearningTheme.mutedInk) {
+                    bonusDestination = .parentProgress
                 }
             }
 
@@ -333,10 +404,27 @@ struct ContentView: View {
             Text(title)
                 .font(.system(.title3, design: .rounded).weight(.heavy))
                 .foregroundStyle(LearningTheme.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
             Text(subtitle)
                 .font(.system(.caption, design: .rounded).weight(.semibold))
                 .foregroundStyle(LearningTheme.mutedInk)
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var chapterPathHeader: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Chapter path")
+                .font(.system(.title3, design: .rounded).weight(.heavy))
+                .foregroundStyle(LearningTheme.ink)
+            Text("Each chapter has 3 short plays — warm-up, game, wrap-up")
+                .font(.system(.caption, design: .rounded).weight(.semibold))
+                .foregroundStyle(LearningTheme.mutedInk)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func bonusButton(
@@ -360,11 +448,10 @@ struct ContentView: View {
                     .font(.system(.headline, design: .rounded).weight(.heavy))
                     .foregroundStyle(LearningTheme.ink)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-
-                Spacer(minLength: 0)
+                    .minimumScaleFactor(0.75)
+                    .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.horizontal, 14)
+            .padding(.horizontal, 12)
             .frame(maxWidth: .infinity)
             .frame(height: LearningTheme.minTouchTarget)
             .background {
@@ -419,6 +506,31 @@ struct ContentView: View {
         case .stickerBook:
             StickerBookView(
                 completedCount: completedCount,
+                onClose: { bonusDestination = nil }
+            )
+        case .learnHub:
+            LearnHubView(
+                ageYears: profile.ageInYears,
+                initialCategory: learnLaunchCategory,
+                onPracticeFinished: { category, coins in
+                    practiceStore.recordPractice(category: category)
+                    awardBonusCoins(coins)
+                    claimMissionBonusIfNeeded()
+                },
+                onClose: {
+                    learnLaunchCategory = nil
+                    bonusDestination = nil
+                }
+            )
+        case .parentProgress:
+            ParentProgressView(
+                nickname: profile.nickname,
+                ageBandLabel: ageBand.friendlyLabel,
+                completedChapters: completedCount,
+                totalChapters: progress.chapters.count,
+                streakDays: streakDays,
+                coinBalance: profile.totalCoins,
+                practice: practiceStore,
                 onClose: { bonusDestination = nil }
             )
         }
@@ -559,6 +671,42 @@ struct ContentView: View {
         UserDefaults.standard.set(streakDays, forKey: streakStorageKey)
     }
 
+    private func markChapterDoneToday() {
+        let today = Calendar.current.startOfDay(for: .now).timeIntervalSince1970
+        UserDefaults.standard.set(today, forKey: chapterDoneTodayKey)
+        completedChapterToday = true
+    }
+
+    private func refreshChapterDoneToday() {
+        let today = Calendar.current.startOfDay(for: .now).timeIntervalSince1970
+        let stored = UserDefaults.standard.double(forKey: chapterDoneTodayKey)
+        completedChapterToday = stored == today
+    }
+
+    private func openMissionChapter() {
+        guard let chapter = missionChapter else { return }
+        selectedLesson = ChapterRepository.lesson(
+            for: chapter,
+            ageYears: profile.ageInYears
+        )
+    }
+
+    private func openLearnHub(_ category: LearnPracticeCategory? = nil) {
+        learnLaunchCategory = category
+        bonusDestination = .learnHub
+    }
+
+    private func claimMissionBonusIfNeeded() {
+        let bonus = practiceStore.claimMissionBonusIfEligible(
+            chapterDoneToday: missionChapterDone
+        )
+        guard bonus > 0 else { return }
+        withAnimation(LearningTheme.successBump) {
+            profile.totalCoins = min(profile.totalCoins + bonus, 9_999)
+        }
+        AudioHapticManager.shared.playSuccess()
+    }
+
     private func checkStickers() {
         let fresh = stickerStore.sync(completedCount: progress.completedCount)
         if let first = fresh.first {
@@ -583,6 +731,8 @@ private enum BonusDestination: String, Identifiable, Hashable {
     case rhythmTap
     case memoryMatch
     case stickerBook
+    case learnHub
+    case parentProgress
 
     var id: String { rawValue }
 }

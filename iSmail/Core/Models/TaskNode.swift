@@ -43,6 +43,9 @@ enum ActivityPayload: Hashable, Sendable {
     case sequenceOrder(SequenceOrderContent)
     case storyTime(StoryTimeContent)
     case memoryMatch(MemoryMatchContent)
+    case letterHunt(LetterHuntContent)
+    case countTap(CountTapContent)
+    case speakAndSay(SpeakAndSayContent)
 }
 
 // MARK: - Drag & Drop
@@ -242,4 +245,63 @@ struct MemoryPair: Identifiable, Hashable, Sendable {
         self.label = label
         self.symbolName = symbolName
     }
+}
+
+// MARK: - Letter Hunt (ABC)
+
+struct LetterHuntContent: Hashable, Sendable {
+    /// Uppercase target letter, e.g. "A".
+    var targetLetter: String
+    /// Letter cards shown to the child (includes the target).
+    var choices: [String]
+    /// Friendly phonics tip spoken by the buddy.
+    var soundHint: String
+
+    func limited(to count: Int) -> LetterHuntContent {
+        let n = max(2, count)
+        guard choices.contains(targetLetter) else { return self }
+        var pool = choices.filter { $0 != targetLetter }
+        pool.shuffle()
+        let picked = Array(([targetLetter] + pool).prefix(n)).shuffled()
+        return LetterHuntContent(
+            targetLetter: targetLetter,
+            choices: picked,
+            soundHint: soundHint
+        )
+    }
+}
+
+// MARK: - Count & Tap (123)
+
+struct CountTapContent: Hashable, Sendable {
+    /// How many icons are on screen.
+    var itemCount: Int
+    var symbolName: String
+    var itemLabel: String
+    /// Number buttons offered (includes the correct count).
+    var numberChoices: [Int]
+
+    var correctAnswer: Int { itemCount }
+
+    func limited(to choiceCount: Int) -> CountTapContent {
+        let n = max(2, choiceCount)
+        var pool = numberChoices.filter { $0 != itemCount }
+        pool.shuffle()
+        let picked = Array(([itemCount] + pool).prefix(n)).sorted()
+        return CountTapContent(
+            itemCount: itemCount,
+            symbolName: symbolName,
+            itemLabel: itemLabel,
+            numberChoices: picked
+        )
+    }
+}
+
+// MARK: - Speak & Say
+
+struct SpeakAndSayContent: Hashable, Sendable {
+    var word: String
+    var symbolName: String
+    /// Short coaching line, e.g. "Say apple — ap-ple!"
+    var coachLine: String
 }
