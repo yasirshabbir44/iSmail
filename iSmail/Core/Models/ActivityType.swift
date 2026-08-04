@@ -14,6 +14,12 @@ enum ActivityType: String, Codable, CaseIterable, Hashable, Sendable {
     case sequenceOrder
     case storyTime
     case memoryMatch
+    /// Find the target letter among playful letter cards (ABC).
+    case letterHunt
+    /// Count items, then tap the matching number (123).
+    case countTap
+    /// Listen, say the word aloud, then confirm (speak practice).
+    case speakAndSay
 
     var displayName: String {
         switch self {
@@ -22,6 +28,9 @@ enum ActivityType: String, Codable, CaseIterable, Hashable, Sendable {
         case .sequenceOrder: "Order"
         case .storyTime: "Story"
         case .memoryMatch: "Memory"
+        case .letterHunt: "Letters"
+        case .countTap: "Numbers"
+        case .speakAndSay: "Speak"
         }
     }
 
@@ -32,6 +41,9 @@ enum ActivityType: String, Codable, CaseIterable, Hashable, Sendable {
         case .sequenceOrder: "arrow.left.arrow.right"
         case .storyTime: "book.fill"
         case .memoryMatch: "rectangle.on.rectangle.angled"
+        case .letterHunt: "textformat"
+        case .countTap: "number"
+        case .speakAndSay: "mouth.fill"
         }
     }
 
@@ -43,6 +55,9 @@ enum ActivityType: String, Codable, CaseIterable, Hashable, Sendable {
         case .sequenceOrder: "Sequencing"
         case .storyTime: "Listening"
         case .memoryMatch: "Working memory"
+        case .letterHunt: "Phonics"
+        case .countTap: "Counting"
+        case .speakAndSay: "Speaking"
         }
     }
 }

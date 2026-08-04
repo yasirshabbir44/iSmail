@@ -14,6 +14,8 @@ enum LearningWorld: String, CaseIterable, Codable, Hashable, Sendable {
     case feelings
     case nature
     case storyStars
+    case letterLand
+    case numberTown
 
     var title: String {
         switch self {
@@ -22,6 +24,8 @@ enum LearningWorld: String, CaseIterable, Codable, Hashable, Sendable {
         case .feelings: "Feelings"
         case .nature: "Nature"
         case .storyStars: "Story Stars"
+        case .letterLand: "Letter Land"
+        case .numberTown: "Number Town"
         }
     }
 
@@ -32,6 +36,8 @@ enum LearningWorld: String, CaseIterable, Codable, Hashable, Sendable {
         case .feelings: "Happy hearts & kind wishes"
         case .nature: "Weather, park days & gardens"
         case .storyStars: "Brave foxes & twinkling stars"
+        case .letterLand: "ABC letters, sounds & words"
+        case .numberTown: "Count, tap & number friends"
         }
     }
 
@@ -42,6 +48,8 @@ enum LearningWorld: String, CaseIterable, Codable, Hashable, Sendable {
         case .feelings: "heart.fill"
         case .nature: "leaf.fill"
         case .storyStars: "sparkles"
+        case .letterLand: "textformat"
+        case .numberTown: "number.circle.fill"
         }
     }
 
@@ -53,6 +61,8 @@ enum LearningWorld: String, CaseIterable, Codable, Hashable, Sendable {
         case .feelings: 7...9
         case .nature: 10...12
         case .storyStars: 13...15
+        case .letterLand: 16...18
+        case .numberTown: 19...21
         }
     }
 
@@ -63,6 +73,8 @@ enum LearningWorld: String, CaseIterable, Codable, Hashable, Sendable {
         case .feelings: Color(red: 0.55, green: 0.40, blue: 0.78)
         case .nature: LearningTheme.success
         case .storyStars: LearningTheme.sunshine
+        case .letterLand: Color(red: 0.20, green: 0.55, blue: 0.90)
+        case .numberTown: Color(red: 0.95, green: 0.45, blue: 0.55)
         }
     }
 

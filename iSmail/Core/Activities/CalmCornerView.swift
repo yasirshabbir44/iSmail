@@ -38,17 +38,23 @@ struct CalmCornerView: View {
                     Text(isRunning ? (isInhaling ? "Breathe in…" : "Breathe out…") : "Ready when you are")
                         .font(.system(.title, design: .rounded).weight(.heavy))
                         .foregroundStyle(LearningTheme.ink)
+                        .multilineTextAlignment(.center)
+                        .minimumScaleFactor(0.8)
+                        .lineLimit(2)
+                        .padding(.horizontal, 16)
                         .animation(LearningTheme.forgivingSpring, value: isInhaling)
                         .animation(LearningTheme.forgivingSpring, value: isRunning)
 
                     Text(isRunning ? "Cycle \(min(cycleCount + 1, targetCycles)) of \(targetCycles)" : "Three gentle breaths together")
                         .font(.system(.body, design: .rounded).weight(.semibold))
                         .foregroundStyle(LearningTheme.mutedInk)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 16)
 
                     ZStack {
                         Circle()
                             .fill(LearningTheme.accent.opacity(glow ? 0.22 : 0.10))
-                            .frame(width: 260, height: 260)
+                            .frame(width: min(260, geo.size.width * 0.68), height: min(260, geo.size.width * 0.68))
                             .scaleEffect(breathScale * 1.15)
 
                         Circle()
@@ -60,10 +66,10 @@ struct CalmCornerView: View {
                                     ],
                                     center: .center,
                                     startRadius: 10,
-                                    endRadius: 120
+                                    endRadius: min(120, geo.size.width * 0.32)
                                 )
                             )
-                            .frame(width: 180, height: 180)
+                            .frame(width: min(180, geo.size.width * 0.48), height: min(180, geo.size.width * 0.48))
                             .scaleEffect(breathScale)
                             .overlay {
                                 BuddyCoachView(mood: isRunning ? .idle : .cheering, size: 72)

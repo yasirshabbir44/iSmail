@@ -23,14 +23,15 @@ struct AdventureMapView: View {
     var body: some View {
         GeometryReader { geo in
             let width = geo.size.width
+            let adaptiveNode = min(nodeSize, max(64, width * 0.22))
             let positions = Self.nodePositions(
                 count: chapters.count,
                 width: width,
-                nodeSize: nodeSize
+                nodeSize: adaptiveNode
             )
             let mapHeight = Self.mapContentHeight(
                 count: chapters.count,
-                nodeSize: nodeSize
+                nodeSize: adaptiveNode
             )
 
             ZStack(alignment: .topLeading) {
@@ -71,7 +72,7 @@ struct AdventureMapView: View {
                             symbolName: chapter.world.symbolName,
                             tint: chapter.world.tint,
                             state: state,
-                            size: nodeSize,
+                            size: adaptiveNode,
                             isChestReward: chapter.isChestReward,
                             avatarId: avatarId,
                             countdownLabel: progress.countdownLabel(for: chapter),
@@ -88,6 +89,8 @@ struct AdventureMapView: View {
             .frame(width: width, height: mapHeight)
             .frame(maxWidth: .infinity)
         }
+        // Outer height uses the max node size so ScrollView gets a stable estimate;
+        // nodes themselves scale down on narrow widths inside the GeometryReader.
         .frame(height: Self.mapContentHeight(count: chapters.count, nodeSize: nodeSize))
         .animation(mapSpring, value: progress.completedCount)
         .sheet(item: $previewChapter) { chapter in

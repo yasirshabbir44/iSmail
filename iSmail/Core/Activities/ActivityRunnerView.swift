@@ -78,6 +78,12 @@ struct ActivityRunnerView: View {
             return "Listen closely — the glowing answer is a clue!"
         case .memoryMatch:
             return "Remember the glowing pair — you've got this!"
+        case .letterHunt:
+            return "The glowing letter is the one you want!"
+        case .countTap:
+            return "Count slowly — the glowing number is a clue!"
+        case .speakAndSay:
+            return "Tap Hear first, then say the word out loud!"
         }
     }
 
@@ -117,7 +123,7 @@ struct ActivityRunnerView: View {
                         .lineLimit(2)
                         .minimumScaleFactor(0.8)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, 16)
                         .padding(.top, isCompactHeight ? 8 : 14)
                         .padding(.bottom, isCompactHeight ? 6 : 10)
 
@@ -181,7 +187,7 @@ struct ActivityRunnerView: View {
     // MARK: - Chrome
 
     private var topChrome: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
             ScreenBackButton {
                 dismiss()
             }
@@ -213,8 +219,8 @@ struct ActivityRunnerView: View {
                     )
                 }
             }
-
-            Spacer(minLength: 0)
+            .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+            .layoutPriority(1)
 
             HStack(spacing: 4) {
                 Image(systemName: "star.fill")
@@ -222,15 +228,18 @@ struct ActivityRunnerView: View {
                 Text("+\(rewardCoins)")
                     .font(.system(.subheadline, design: .rounded).weight(.heavy))
                     .foregroundStyle(LearningTheme.ink)
+                    .lineLimit(1)
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 10)
             .padding(.vertical, 10)
             .background {
                 Capsule(style: .continuous)
                     .fill(LearningTheme.surface.opacity(0.95))
             }
+            .fixedSize()
             .accessibilityLabel("Reward \(rewardCoins) stars")
         }
+        .frame(maxWidth: .infinity)
     }
 
     private func promptRow(compact: Bool) -> some View {
@@ -243,6 +252,8 @@ struct ActivityRunnerView: View {
                     : (hintManager.isHintActive ? LearningTheme.sunshine : tint),
                 buddySize: compact ? 48 : 64
             )
+            .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+            .layoutPriority(1)
 
             Button {
                 SpeechManager.shared.speak(text: task.prompt)
@@ -261,8 +272,10 @@ struct ActivityRunnerView: View {
                     }
             }
             .buttonStyle(KidBounceButtonStyle())
+            .fixedSize()
             .accessibilityLabel("Read prompt aloud")
         }
+        .frame(maxWidth: .infinity)
     }
 
     private var progressTotal: Int {
@@ -273,7 +286,7 @@ struct ActivityRunnerView: View {
             return max(content.pairs.count, 1)
         case .storyTime(let content):
             return max(content.pages.count, 1)
-        case .tapAndSelect, .sequenceOrder:
+        case .tapAndSelect, .sequenceOrder, .letterHunt, .countTap, .speakAndSay:
             return 1
         }
     }
@@ -361,6 +374,39 @@ struct ActivityRunnerView: View {
                 onCorrectAttempt: {
                     handleHit()
                     stepProgress = min(stepProgress + 1, progressTotal)
+                },
+                onComplete: handleComplete
+            )
+        case .letterHunt(let content):
+            LetterHuntTaskView(
+                content: content,
+                showHint: hintManager.isHintActive,
+                onIncorrectAttempt: handleMiss,
+                onCorrectAttempt: {
+                    handleHit()
+                    stepProgress = 1
+                },
+                onComplete: handleComplete
+            )
+        case .countTap(let content):
+            CountTapTaskView(
+                content: content,
+                showHint: hintManager.isHintActive,
+                onIncorrectAttempt: handleMiss,
+                onCorrectAttempt: {
+                    handleHit()
+                    stepProgress = 1
+                },
+                onComplete: handleComplete
+            )
+        case .speakAndSay(let content):
+            SpeakAndSayTaskView(
+                content: content,
+                showHint: hintManager.isHintActive,
+                onIncorrectAttempt: handleMiss,
+                onCorrectAttempt: {
+                    handleHit()
+                    stepProgress = 1
                 },
                 onComplete: handleComplete
             )
@@ -530,8 +576,13 @@ struct ActivityRunnerView: View {
 
     private func maybeAutoReadPrompt() {
         guard autoReadPrompts else { return }
-        // Story Time speaks each page itself — avoid double TTS.
-        if task.activityType == .storyTime { return }
+        // These activities speak themselves — avoid double TTS.
+        switch task.activityType {
+        case .storyTime, .speakAndSay, .countTap, .letterHunt:
+            return
+        case .dragAndDrop, .tapAndSelect, .sequenceOrder, .memoryMatch:
+            break
+        }
         let token = generation
         // Brief delay so the stage can settle before speaking.
         SafeAsync.after(0.35) {

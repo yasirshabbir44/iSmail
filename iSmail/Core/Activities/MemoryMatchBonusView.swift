@@ -58,8 +58,9 @@ struct MemoryMatchBonusView: View {
                     Text("Memory Match")
                         .font(.system(.title2, design: .rounded).weight(.heavy))
                         .foregroundStyle(LearningTheme.ink)
-
-                    Spacer()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
 
                     HStack(spacing: 6) {
                         Text("🪙")
@@ -72,6 +73,7 @@ struct MemoryMatchBonusView: View {
                         Capsule(style: .continuous)
                             .fill(LearningTheme.sunshineSoft)
                     }
+                    .fixedSize()
                 }
 
                 Text("Flip two cards — find every pair!")

@@ -21,18 +21,31 @@ struct MascotHeaderView: View {
     private let mapSpring = Animation.spring(response: 0.4, dampingFraction: 0.7)
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             if let onBack {
                 ScreenBackButton(accessibilityLabel: "Back to profiles", action: onBack)
             }
 
             avatarChip
+                .layoutPriority(-1)
+
             Spacer(minLength: 4)
-            streakChip
-            coinChip
+
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) {
+                    streakChip(compact: false)
+                    coinChip
+                }
+                HStack(spacing: 6) {
+                    streakChip(compact: true)
+                    coinChip
+                }
+            }
+            .layoutPriority(1)
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 10)
         .padding(.vertical, 10)
+        .frame(maxWidth: .infinity)
         .background {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(LearningTheme.surface.opacity(0.94))
@@ -64,7 +77,7 @@ struct MascotHeaderView: View {
         Button {
             onAvatarTap?()
         } label: {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 AvatarBadgeView(avatarId: avatarId, size: 44)
                     .overlay {
                         RoundedRectangle(cornerRadius: 44 * 0.28, style: .continuous)
@@ -76,7 +89,7 @@ struct MascotHeaderView: View {
                         .font(.system(.headline, design: .rounded).weight(.heavy))
                         .foregroundStyle(LearningTheme.ink)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.75)
+                        .minimumScaleFactor(0.7)
 
                     if onAvatarTap != nil {
                         Text("Switch")
@@ -84,8 +97,8 @@ struct MascotHeaderView: View {
                             .foregroundStyle(LearningTheme.accent)
                     }
                 }
+                .frame(minWidth: 0, alignment: .leading)
             }
-            .padding(.trailing, 4)
         }
         .buttonStyle(KidBounceButtonStyle())
         .disabled(onAvatarTap == nil)
@@ -94,10 +107,10 @@ struct MascotHeaderView: View {
 
     // MARK: - Center: streak
 
-    private var streakChip: some View {
-        HStack(spacing: 6) {
+    private func streakChip(compact: Bool) -> some View {
+        HStack(spacing: 5) {
             Text("🔥")
-                .font(.system(size: 18))
+                .font(.system(size: 16))
                 .scaleEffect(streakPulse ? 1.12 : 1.0)
                 .offset(y: streakPulse ? -1 : 1)
 
@@ -108,11 +121,14 @@ struct MascotHeaderView: View {
                 .monospacedDigit()
                 .animation(mapSpring, value: streakDays)
 
-            Text(streakDays == 1 ? "Day" : "Days")
-                .font(.system(.caption, design: .rounded).weight(.bold))
-                .foregroundStyle(LearningTheme.mutedInk)
+            if !compact {
+                Text(streakDays == 1 ? "Day" : "Days")
+                    .font(.system(.caption, design: .rounded).weight(.bold))
+                    .foregroundStyle(LearningTheme.mutedInk)
+                    .lineLimit(1)
+            }
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, compact ? 10 : 12)
         .padding(.vertical, 8)
         .background {
             Capsule(style: .continuous)
@@ -122,15 +138,16 @@ struct MascotHeaderView: View {
                         .strokeBorder(LearningTheme.coral.opacity(0.35), lineWidth: 2)
                 }
         }
+        .fixedSize(horizontal: true, vertical: false)
         .accessibilityLabel("Daily streak \(streakDays) days")
     }
 
     // MARK: - Right: coins
 
     private var coinChip: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 5) {
             Text("🪙")
-                .font(.system(size: 18))
+                .font(.system(size: 16))
                 .rotationEffect(.degrees(coinWiggle ? 12 : 0))
                 .scaleEffect(coinWiggle ? 1.12 : 1.0)
 
@@ -139,9 +156,11 @@ struct MascotHeaderView: View {
                 .foregroundStyle(LearningTheme.ink)
                 .contentTransition(.numericText())
                 .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
                 .animation(mapSpring, value: coinBalance)
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .background {
             Capsule(style: .continuous)
@@ -152,6 +171,7 @@ struct MascotHeaderView: View {
                 }
                 .shadow(color: .black.opacity(0.05), radius: 6, y: 2)
         }
+        .fixedSize(horizontal: true, vertical: false)
         .accessibilityLabel("Coin balance \(coinBalance)")
     }
 }
